@@ -8,16 +8,16 @@ function Call([string]$method, [string]$path, [string]$tok, [string]$body) {
   try { $resp = $req.GetResponse() } catch [Net.WebException] { $resp = $_.Exception.Response }
   $rd = New-Object IO.StreamReader($resp.GetResponseStream()); $o = [pscustomobject]@{ status = [int]$resp.StatusCode; body = $rd.ReadToEnd() }; $rd.Close(); $resp.Close(); $o
 }
-$U = (Call POST "/auth/v1/signup" $k '{"data":{}}').body | ConvertFrom-Json
+$tester = (Call POST "/auth/v1/signup" $k '{"data":{}}').body | ConvertFrom-Json
 $ids = @()
 for ($i = 1; $i -le 10; $i++) {
-  $r = Call POST "/rest/v1/evidence" $U.access_token ('{"url":"https://example.org/limit-test-' + $i + '","stance":"support"}')
+  $r = Call POST "/rest/v1/evidence" $tester.access_token ('{"url":"https://example.org/limit-test-' + $i + '","stance":"support"}')
   "post $i -> $($r.status)"
   if ($r.status -eq 201) { $ids += ($r.body | ConvertFrom-Json)[0].id }
   Start-Sleep -Seconds 31
 }
-$r = Call POST "/rest/v1/evidence" $U.access_token '{"url":"https://example.org/limit-test-11","stance":"support"}'
+$r = Call POST "/rest/v1/evidence" $tester.access_token '{"url":"https://example.org/limit-test-11","stance":"support"}'
 "post 11 -> $($r.status) $($r.body)"
 if ($ids.Count -eq 10 -and $r.body -match "limit_reached") { "RESULT: ok - 10 accepted, 11th refused" } else { "RESULT: FAIL - accepted $($ids.Count), 11th: $($r.status)" }
-foreach ($id in $ids) { $null = Call DELETE "/rest/v1/evidence?id=eq.$id" $U.access_token $null }
+foreach ($id in $ids) { $null = Call DELETE "/rest/v1/evidence?id=eq.$id" $tester.access_token $null }
 "cleaned up $($ids.Count) test posts"
