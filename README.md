@@ -57,7 +57,7 @@ No sign-up, no ads, no analytics. A visitor who votes or posts gets an anonymous
 
 ## Development
 
-Automated tests in [`tests/`](tests/) load the page in a headless browser, exercise every interactive part, and probe the database's access rules directly.
+Automated tests in [`tests/`](tests/) load the page in a headless browser, exercise every interactive part, check touch scrolling and dragging in mobile Chromium, and probe the database's access rules directly.
 
 ## License
 

@@ -2,6 +2,6 @@
   "name": "the-line-tests",
   "private": true,
   "description": "Automated tests for THE LINE",
-  "scripts": { "test": "node page.test.js captcha" },
-  "devDependencies": { "jsdom": "^25.0.0" }
+  "scripts": { "test": "node page.test.js captcha", "test:mobile": "node mobile.test.js" },
+  "devDependencies": { "jsdom": "^25.0.0", "playwright": "1.48.2" }
 }
