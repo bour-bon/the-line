@@ -782,13 +782,30 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   });
   ['pointerup','pointercancel'].forEach(t => line.addEventListener(t, () => { dragging = false; }));
 
-  /* ---------- shared tally ---------- */
-  let votes = {};      // id -> pos
-  let myId = null, db = null, saved = null;
+  /* ---------- shared state ----------
+     On the public site the vote and the evidence wall live in Supabase.
+     Inside claude.ai they use the artifact's own store. */
+  const SUPABASE_URL = 'https://xmktoolywrjqlzalopze.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhta3Rvb2x5d3JqcWx6YWxvcHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNjI5MDIsImV4cCI6MjEwNjgzODkwMn0.8f6U_cfvztbHlEL-45GdsDzUXLH9wRZ6jzsDD-NLQMU';   // public anon key; access is enforced by the rules in supabase/schema.sql
+  const SECTIONS = {money:'Money', energy:'Energy', water:'Water & carbon', minerals:'Minerals & waste', sub:'Subscriptions', uses:'Uses of AI', general:'Whole picture'};
+  const MAX_POSTS = 10;
+  let counts = Array(N+1).fill(0);   // number of lines drawn at each position
+  let posts = [];                    // visible evidence links, newest first
+  let saved = null, myId = null, amOwner = false, backend = null;
+
+  function cleanUrl(s){
+    try { const u = new URL(String(s).trim()); return (u.protocol==='https:'||u.protocol==='http:') ? u : null; } catch(e){ return null; }
+  }
+  function normalizePost(p, author){
+    if(!p || typeof p!=='object') return null;
+    const u = cleanUrl(p.url);
+    if(!u || (p.stance!=='support' && p.stance!=='challenge')) return null;
+    return {author:String(author||''), id:String(p.id==null?'':p.id), url:u, title:String(p.title||'').slice(0,120), note:String(p.note||'').slice(0,200), stance:p.stance, section:SECTIONS[p.section]?p.section:'general', at:+p.at||0};
+  }
+
+  /* ---------- the tally ---------- */
   function renderHist(){
-    const vals = Object.values(votes).filter(v => typeof v==='number' && v>=0 && v<=N);
-    const counts = Array(N+1).fill(0);
-    vals.forEach(v => counts[v]++);
+    const total = counts.reduce((a,b)=>a+b,0);
     const max = Math.max(1, ...counts);
     const rows = [];
     for(let k=N;k>=0;k--){
@@ -796,60 +813,37 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
       rows.push(`<div class="hist-row${k===pos?' me':''}"><span>${lbl}</span><div><div class="hb" style="width:${counts[k]/max*100}%" data-tip="${counts[k]} ${counts[k]===1?'person':'people'}: ${SLOT_NAME(k).replace(/"/g,'&quot;')}"></div></div><span class="c">${counts[k]}</span></div>`);
     }
     $('hist').innerHTML = rows.join('');
-    if(vals.length){
-      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    if(total){
+      const avg = counts.reduce((a,n,k)=>a+n*k,0)/total;
       const r = Math.round(avg);
       $('worldText').textContent = r===0 ? 'Nothing passes' : r===N ? 'Everything passes' : 'After “' + USES[r-1].h + '”';
-      $('worldNote').textContent = vals.length + (vals.length===1?' line':' lines') + ' drawn · average ' + fmt(avg,1) + ' of ' + N + ' uses pass';
+      $('worldNote').textContent = fmt(total) + (total===1?' line':' lines') + ' drawn · average ' + fmt(avg,1) + ' of ' + N + ' uses pass';
     } else {
       $('worldText').textContent = 'No lines yet';
-      if(db) $('worldNote').textContent = 'Be the first. Drag the line and press “Draw my line here”.';
+      if(backend) $('worldNote').textContent = 'Be the first. Drag the line and press “Draw my line here”.';
     }
   }
   renderLadder();
 
   $('saveBtn').onclick = async () => {
-    if(!db || !myId){
-      $('saveStatus').textContent = 'Saved on this device. Sign in to claude.ai with access to this page to add your line to the tally.';
+    if(!backend){
+      $('saveStatus').textContent = 'Saved on this device. The shared tally isn\'t available right now.';
       return;
     }
     $('saveBtn').disabled = true;
     $('saveStatus').textContent = 'Saving…';
     try {
-      await db.collection('lines').doc(myId).set({pos, at: Date.now()});
+      await backend.saveVote(pos);
       saved = pos;
       $('saveStatus').textContent = 'Saved. Your line counts in the tally.';
     } catch(e){
-      $('saveStatus').textContent = e && e.code==='invalid_argument'
-        ? 'This view can read the tally but not add to it. Your line is saved on this device.'
-        : 'Couldn\'t save just now. Try again in a moment.';
+      $('saveStatus').textContent = backend.errorText(e, 'vote');
     }
     $('saveBtn').disabled = false;
   };
 
   /* ---------- evidence wall ---------- */
-  const SECTIONS = {money:'Money', energy:'Energy', water:'Water & carbon', minerals:'Minerals & waste', sub:'Subscriptions', uses:'Uses of AI', general:'Whole picture'};
-  const MAX_POSTS = 10;
-  let wall = {};       // author id -> posts[]
-  let amOwner = false;
-  function cleanUrl(s){
-    try { const u = new URL(String(s).trim()); return (u.protocol==='https:'||u.protocol==='http:') ? u : null; } catch(e){ return null; }
-  }
-  function allPosts(){
-    const out = [];
-    Object.entries(wall).forEach(([author, posts]) => {
-      if(!Array.isArray(posts)) return;
-      posts.slice(0, MAX_POSTS).forEach(p => {
-        if(!p || typeof p!=='object') return;
-        const u = cleanUrl(p.url);
-        if(!u || (p.stance!=='support' && p.stance!=='challenge')) return;
-        out.push({author, id:String(p.id||''), url:u, title:String(p.title||'').slice(0,120), note:String(p.note||'').slice(0,200), stance:p.stance, section:SECTIONS[p.section]?p.section:'general', at:+p.at||0});
-      });
-    });
-    return out.sort((a,b) => b.at - a.at);
-  }
   function renderWall(){
-    const posts = allPosts();
     const s = posts.filter(p=>p.stance==='support'), c = posts.filter(p=>p.stance==='challenge');
     $('sumS').textContent = $('wS').textContent = $('cS').textContent = s.length;
     $('sumC').textContent = $('wC').textContent = $('cC2').textContent = c.length;
@@ -873,22 +867,22 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     fillFeed($('feedS'), s, 'No supporting links yet. Post a report or article that backs up a number on this page.');
     fillFeed($('feedC'), c, 'No challenges yet. Found a study that says we\'re wrong? Post it here.');
   }
-  function fillFeed(ul, posts, emptyText){
+  function fillFeed(ul, list, emptyText){
     ul.textContent = '';
-    if(!posts.length){
+    if(!list.length){
       const li = document.createElement('li'); li.className='empty'; li.textContent = emptyText; ul.appendChild(li); return;
     }
-    posts.forEach(p => {
+    list.forEach(p => {
       const li = document.createElement('li');
       const meta = document.createElement('div'); meta.className='meta';
       const tag = document.createElement('span'); tag.className='tag'; tag.textContent = SECTIONS[p.section];
       const host = document.createElement('span'); host.textContent = p.url.hostname.replace(/^www\./,'');
       meta.append(tag, host);
       if(p.at){ const dt = document.createElement('span'); dt.textContent = new Date(p.at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); meta.append(dt); }
-      if(p.author===myId || amOwner){
+      if(backend && ((myId && p.author===myId) || amOwner)){
         const rm = document.createElement('button'); rm.type='button'; rm.className='rm';
         rm.textContent = p.author===myId ? 'Delete' : 'Remove';
-        rm.onclick = () => removePost(p.author, p.id);
+        rm.onclick = () => removePost(p);
         meta.append(rm);
       }
       const a = document.createElement('a'); a.className='t'; a.href = p.url.href; a.target='_blank'; a.rel='nofollow ugc noopener noreferrer';
@@ -898,12 +892,11 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
       ul.appendChild(li);
     });
   }
-  async function removePost(author, id){
-    if(!db) return;
-    const posts = (wall[author]||[]).filter(p => String(p.id)!==id);
+  async function removePost(p){
+    if(!backend) return;
     try {
-      await db.collection('evidence').doc(author).set({posts});
-      $('pStatus').textContent = author===myId ? 'Deleted.' : 'Removed.';
+      await backend.remove(p);
+      $('pStatus').textContent = p.author===myId ? 'Deleted.' : 'Removed.';
     } catch(e){ $('pStatus').textContent = 'Couldn\'t remove that link. Try again in a moment.'; }
   }
   $('postForm').addEventListener('submit', async e => {
@@ -911,63 +904,165 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     const st = $('pStatus');
     const u = cleanUrl($('pUrl').value);
     if(!u){ st.textContent = 'Paste a full web address starting with https://'; $('pUrl').focus(); return; }
-    if(!db || !myId){ st.textContent = 'Posting needs you signed in to claude.ai with access to this page.'; return; }
-    const mine = Array.isArray(wall[myId]) ? wall[myId].slice() : [];
-    if(mine.length >= MAX_POSTS){ st.textContent = 'You\'ve posted ' + MAX_POSTS + ' links. Delete one to post another.'; return; }
-    mine.unshift({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    if(!backend){ st.textContent = 'The wall isn\'t taking posts right now.'; return; }
+    if(myId && posts.filter(p=>p.author===myId).length >= MAX_POSTS){ st.textContent = 'You\'ve posted ' + MAX_POSTS + ' links. Delete one to post another.'; return; }
+    const p = {
       url: u.href,
       title: $('pTitle').value.trim().slice(0,120),
       note: $('pNote').value.trim().slice(0,200),
       stance: document.querySelector('input[name=pStance]:checked').value,
-      section: $('pSec').value,
-      at: Date.now()
-    });
+      section: $('pSec').value
+    };
     $('pBtn').disabled = true; st.textContent = 'Posting…';
     try {
-      await db.collection('evidence').doc(myId).set({posts: mine});
+      await backend.post(p);
       st.textContent = 'Posted. Thanks for adding to the record.';
       $('pUrl').value = ''; $('pTitle').value = ''; $('pNote').value = '';
     } catch(err){
-      st.textContent = err && err.code==='invalid_argument'
-        ? 'This view can read the wall but not post to it.'
-        : err && err.code==='quota_exceeded' ? 'The wall is full right now. The owner needs to clear old links.' : 'Couldn\'t post just now. Try again in a moment.';
+      st.textContent = backend.errorText(err, 'post');
     }
     $('pBtn').disabled = false;
   });
   renderWall();
 
-  (async () => {
-    const noWall = msg => { $('pStatus').textContent = msg; };
-    if(!window.claude || !window.claude.use){
-      $('worldNote').textContent = 'The shared tally isn\'t available here. Your line is saved on this device.';
-      noWall('The wall isn\'t available in this view.');
-      return;
-    }
-    const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]);
-    if(!d){
-      $('worldNote').textContent = 'Sign in to claude.ai to see and join the shared tally. Your line is saved on this device.';
-      noWall('Sign in to claude.ai to read and post links.');
-      return;
-    }
-    db = d;
+  /* ---------- backend: claude.ai artifact store ---------- */
+  async function claudeBackend(){
+    const [db, u] = await Promise.all([claude.use('db'), claude.use('user')]);
+    if(!db) return null;
     myId = u ? await u.id() : null;
     amOwner = u ? await u.isOwner() : false;
+    let wall = {};
     db.collection('evidence').onSnapshot(snap => {
-      const next = {};
-      snap.docs.forEach(doc => { const x = doc.data(); if(x && Array.isArray(x.posts)) next[doc.id] = x.posts; });
+      const next = {}, flat = [];
+      snap.docs.forEach(doc => {
+        const x = doc.data();
+        if(!x || !Array.isArray(x.posts)) return;
+        next[doc.id] = x.posts;
+        x.posts.slice(0, MAX_POSTS).forEach(raw => { const p = normalizePost(raw, doc.id); if(p) flat.push(p); });
+      });
       wall = next;
+      posts = flat.sort((a,b) => b.at - a.at);
       renderWall();
-    }, () => { noWall('The wall stopped updating. Reload to reconnect.'); });
+    }, () => { $('pStatus').textContent = 'The wall stopped updating. Reload to reconnect.'; });
     db.collection('lines').onSnapshot(snap => {
-      const next = {};
-      snap.docs.forEach(doc => { const x = doc.data(); if(x && typeof x.pos==='number') next[doc.id] = x.pos; });
-      votes = next;
-      if(myId && myId in votes && saved===null){ saved = votes[myId]; }
+      const c = Array(N+1).fill(0);
+      snap.docs.forEach(doc => {
+        const x = doc.data();
+        if(!x || typeof x.pos!=='number' || x.pos<0 || x.pos>N) return;
+        c[x.pos]++;
+        if(doc.id===myId && saved===null) saved = x.pos;
+      });
+      counts = c;
       renderHist();
-    }, () => {
-      $('worldNote').textContent = 'The shared tally stopped updating. Reload to reconnect.';
-    });
+    }, () => { $('worldNote').textContent = 'The shared tally stopped updating. Reload to reconnect.'; });
+    return {
+      async saveVote(p){
+        if(!myId) throw {code:'no_identity'};
+        await db.collection('lines').doc(myId).set({pos:p, at:Date.now()});
+      },
+      async post(p){
+        if(!myId) throw {code:'no_identity'};
+        const mine = Array.isArray(wall[myId]) ? wall[myId].slice() : [];
+        mine.unshift(Object.assign({id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), at: Date.now()}, p));
+        await db.collection('evidence').doc(myId).set({posts: mine});
+      },
+      async remove(p){
+        const rest = (wall[p.author]||[]).filter(x => String(x.id)!==p.id);
+        await db.collection('evidence').doc(p.author).set({posts: rest});
+      },
+      errorText(e, what){
+        if(e && (e.code==='invalid_argument' || e.code==='no_identity')) return 'This view can read but not add. Ask the owner for Contributor access.';
+        if(e && e.code==='quota_exceeded') return 'The store is full. The owner needs to clear old entries.';
+        return what==='vote' ? 'Couldn\'t save your line just now. Try again in a moment.' : 'Couldn\'t post just now. Try again in a moment.';
+      }
+    };
+  }
+
+  /* ---------- backend: Supabase (public site) ---------- */
+  function loadScript(src){
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  }
+  async function supabaseBackend(){
+    await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js');
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+    const { data:{ session } } = await sb.auth.getSession();
+    myId = session ? session.user.id : null;
+    // Visitors get an anonymous account only when they first vote or post.
+    async function ensureUser(){
+      if(myId) return myId;
+      const { data, error } = await sb.auth.signInAnonymously();
+      if(error) throw error;
+      myId = data.user.id;
+      return myId;
+    }
+    async function refreshVotes(){
+      const { data, error } = await sb.rpc('vote_counts');
+      if(error) throw error;
+      const c = Array(N+1).fill(0);
+      (data||[]).forEach(r => { const k = Number(r.pos); if(k>=0 && k<=N) c[k] = Number(r.n)||0; });
+      counts = c;
+      renderHist();
+    }
+    async function refreshPosts(){
+      const { data, error } = await sb.from('evidence').select('id,author,url,title,note,stance,section,created_at').order('created_at', {ascending:false}).limit(300);
+      if(error) throw error;
+      posts = (data||[]).map(r => normalizePost(Object.assign({}, r, {at: Date.parse(r.created_at)}), r.author)).filter(Boolean);
+      renderWall();
+    }
+    if(myId){
+      const { data } = await sb.from('votes').select('pos').eq('voter', myId).maybeSingle();
+      if(data) saved = data.pos;
+    }
+    await Promise.all([refreshVotes(), refreshPosts()]);
+    setInterval(() => {
+      if(document.hidden) return;
+      refreshVotes().catch(() => {});
+      refreshPosts().catch(() => {});
+    }, 30000);
+    return {
+      async saveVote(p){
+        const uid = await ensureUser();
+        const { error } = await sb.from('votes').upsert({voter: uid, pos: p, updated_at: new Date().toISOString()});
+        if(error) throw error;
+        await refreshVotes();
+      },
+      async post(p){
+        await ensureUser();
+        const { error } = await sb.from('evidence').insert(p);
+        if(error) throw error;
+        await refreshPosts();
+      },
+      async remove(p){
+        const { error } = await sb.from('evidence').delete().eq('id', Number(p.id));
+        if(error) throw error;
+        await refreshPosts();
+      },
+      errorText(e, what){
+        const m = String((e && e.message) || '');
+        if(/limit_reached/.test(m)) return 'You\'ve posted ' + MAX_POSTS + ' links. Delete one to post another.';
+        if(/too_fast/.test(m)) return 'One link every 30 seconds, please. Try again in a moment.';
+        if(e && e.code==='23514') return 'That link or text isn\'t valid. Check the address and keep the note under 200 characters.';
+        if(/anonymous/i.test(m)) return 'New votes and posts are switched off right now.';
+        if(/rate limit/i.test(m)) return 'Too many new visitors from your network right now. Try again in an hour.';
+        return what==='vote' ? 'Couldn\'t save your line just now. Try again in a moment.' : 'Couldn\'t post just now. Try again in a moment.';
+      }
+    };
+  }
+
+  (async () => {
+    const inClaude = !!(window.claude && window.claude.use);
+    try {
+      if(inClaude) backend = await claudeBackend();
+      else if(SUPABASE_URL && SUPABASE_KEY) backend = await supabaseBackend();
+    } catch(e){ backend = null; }
+    if(!backend){
+      $('worldNote').textContent = inClaude
+        ? 'Sign in to claude.ai to see and join the shared tally. Your line is saved on this device.'
+        : 'The shared tally isn\'t available right now. Your line is saved on this device.';
+      $('pStatus').textContent = 'The wall isn\'t available right now.';
+    }
+    renderHist();
+    renderWall();
   })();
 })();
 </script>

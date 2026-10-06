@@ -1,0 +1,6 @@
+{
+  "name": "the-line-tests",
+  "private": true,
+  "scripts": { "test": "node page.test.js supabase" },
+  "devDependencies": { "jsdom": "^25.0.0" }
+}

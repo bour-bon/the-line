@@ -19,11 +19,39 @@ A single-page, sourced ledger of what AI costs the planet: money, electricity, w
 
 ## Running it
 
-It's one static file with no build step. Open `index.html` in a browser, or serve the folder with any static host. This repo is published with GitHub Pages.
+It's one static file with no build step, published with GitHub Pages. Open `index.html` in a browser or serve the folder from any static host.
 
-## Known limitation
+## Backend: the vote and the evidence wall
 
-The shared vote ("Draw your line") and the evidence wall were built on claude.ai's artifact storage. On a standalone host they show as unavailable, and each visitor's line is saved only in their own browser. Making them worldwide needs a small backend, such as Supabase or Firebase, with moderation for posted links.
+The shared vote and the evidence wall store their data in [Supabase](https://supabase.com). The project URL and the public anon key sit at the top of the script in `index.html`. The anon key is public by design. What protects the data is the access rules in [`supabase/schema.sql`](supabase/schema.sql):
+
+- Visitors get an anonymous account the first time they vote or post. Nobody has to sign up.
+- **Votes:** one per person, a position from 0 to 8. Individual votes are private, and everyone can read the totals through `vote_counts()`.
+- **Evidence links:** must be `http(s)` links. Titles are capped at 120 characters and notes at 200. Each person can post at most 10 links, one every 30 seconds. Posts can be deleted by their author but never edited.
+- The server sets each post's timestamp and visibility, so a visitor can't fake either.
+
+If the page is opened inside claude.ai, it uses the artifact's own storage instead.
+
+### Moderating the evidence wall
+
+In Supabase, open **Table Editor → evidence** and set `hidden` to `true` on a row. The link disappears for everyone except its author. To ban someone, delete their user under **Authentication → Users**; their posts and vote are deleted with them.
+
+### Setting up a fresh Supabase project
+
+1. Create the project and run `supabase/schema.sql` in the SQL Editor.
+2. Turn on **Authentication → Sign In / Providers → Allow anonymous sign-ins**.
+3. Put the project URL and anon key into `SUPABASE_URL` and `SUPABASE_KEY` in `index.html`.
+
+Never put the `service_role` key in the page.
+
+## Tests
+
+- `tests/page.test.js` loads the page in jsdom, a headless browser, and exercises every interactive part. Install with `npm install` in `tests/`, then run:
+  - `node page.test.js supabase` for the live database
+  - `node page.test.js claude` for a mock of the claude.ai store
+  - `node page.test.js none` for no backend
+- `tests/security.ps1` attacks the database directly, bypassing the page, to prove the access rules hold.
+- `tests/limit.ps1` checks the 10-links-per-person cap. It takes about 5 minutes.
 
 ## Sources
 
