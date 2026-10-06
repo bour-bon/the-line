@@ -26,6 +26,7 @@ const dom = new JSDOM(src, {
   virtualConsole: vc,
   beforeParse(w){
     w.matchMedia = q => ({ matches:false, media:q, addEventListener(){}, removeEventListener(){} });
+    w.scrollBy = () => {};   // jsdom has no layout or scrolling
     // jsdom has no fetch; lend it Node's real one so supabase-js can reach the database
     Object.assign(w, { fetch, Headers, Request, Response, AbortController });
     // stand-in for Cloudflare Turnstile; Cloudflare's dummy token only passes when Supabase uses the test secret
@@ -83,6 +84,25 @@ function submitPost(url, stance, title, note){
   check('Home key = nothing passes', $('myLineText').textContent==='Nothing passes');
   d.querySelectorAll('#ladder .rung')[3].click();
   check('line saved locally', w.localStorage.getItem('theline.pos')==='4');
+
+  console.log('Touch and drag (mobile)');
+  const css = [...d.querySelectorAll('style')].map(s => s.textContent).join('\n');
+  const blocks = css.match(/[^{}]*\{[^{}]*touch-action\s*:\s*none[^{}]*\}/g) || [];
+  check('only the yellow line blocks scrolling, so the page scrolls on phones', blocks.length===1 && /^\s*\.dragline\s*\{/.test(blocks[0]), blocks.map(b => b.trim().split('{')[0]));
+  const ptr = (type, target, y) => { const e = new w.MouseEvent(type, { bubbles:true, cancelable:true, clientY:y }); Object.defineProperty(e, 'pointerId', { value:7 }); target.dispatchEvent(e); return e; };
+  const dl = d.querySelector('.dragline');
+  ptr('pointerdown', dl, 0);
+  check('pressing the line starts a drag', dl.classList.contains('dragging'));
+  // jsdom lays nothing out, so every use sits at y=0: moving below that drags the line to the bottom
+  ptr('pointermove', w, 10);
+  check('dragging moves the line', $('myLineText').textContent==='Everything passes', $('myLineText').textContent);
+  const mv = ptr('pointermove', w, 10);
+  check('the drag stops the page scrolling only while dragging', mv.defaultPrevented);
+  ptr('pointerup', w, 10);
+  check('releasing ends the drag', !dl.classList.contains('dragging'));
+  d.querySelectorAll('#ladder .rung')[3].click();
+  const after = ptr('pointermove', w, 10);
+  check('after release, finger moves no longer move the line or block scrolling', $('myLineText').textContent==='4 of 8 pass' && !after.defaultPrevented, $('myLineText').textContent);
 
   console.log('Evidence wall: validation');
   submitPost('not a link', 'support');

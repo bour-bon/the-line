@@ -179,7 +179,7 @@ input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 
 /* the ladder */
 .ladder-wrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:var(--s6);align-items:start}
-.ladder{list-style:none;margin:0;padding:0;position:relative;user-select:none;touch-action:none}
+.ladder{list-style:none;margin:0;padding:0;position:relative;user-select:none}
 .rung{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:start;padding:var(--s3) 0;border-bottom:1px solid var(--rule);cursor:pointer;transition:opacity .2s}
 .rung .n{font-family:var(--mono);font-size:13px;color:var(--muted);padding-top:3px}
 .rung h4{margin:0;font-size:18px;line-height:1.25;font-weight:700}
@@ -188,7 +188,10 @@ input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 .rung.below h4{text-decoration:line-through;text-decoration-thickness:2px}
 .pill{display:inline-flex;align-items:center;gap:6px;font:600 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--rule);padding:5px 8px;border-radius:2px;white-space:nowrap;color:var(--ink);background:var(--surface)}
 .pill i{width:8px;height:8px;border-radius:50%;display:inline-block}
-.dragline{position:relative;height:34px;margin:2px 0;cursor:grab;display:grid;align-content:center;gap:5px;outline-offset:2px}
+.dragline{position:relative;height:34px;margin:2px 0;cursor:grab;display:grid;align-content:center;gap:5px;outline-offset:2px;touch-action:none}
+.dragline.dragging{cursor:grabbing}
+.dragline.dragging .tag{transform:translate(-50%,-50%) scale(1.08)}
+@media (pointer:coarse){ .dragline{height:44px} }
 .dragline::before,.dragline::after{content:"";height:5px;background:var(--line);box-shadow:0 0 0 1px var(--line-edge)}
 .dragline:active{cursor:grabbing}
 .dragline .tag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--line);color:var(--on-line);font:800 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--line-edge);white-space:nowrap}
@@ -607,6 +610,8 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
 
   /* ---------- tooltip ---------- */
   const tip = $('tip');
+  // touchscreens have no "mouse leaves" moment, so drop the tooltip when the page moves
+  window.addEventListener('scroll', () => { tip.hidden = true; }, {passive:true});
   document.addEventListener('pointermove', e => {
     const t = e.target.closest && e.target.closest('[data-tip]');
     if(!t){ tip.hidden = true; return; }
@@ -782,15 +787,36 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     if(e.key==='Home'){ e.preventDefault(); setPos(0,true); }
     if(e.key==='End'){ e.preventDefault(); setPos(N,true); }
   });
-  let dragging = false;
-  line.addEventListener('pointerdown', e => { dragging = true; line.setPointerCapture(e.pointerId); e.preventDefault(); });
-  line.addEventListener('pointermove', e => {
-    if(!dragging) return;
+  // Dragging is tracked on the window, not the line: the line moves in the DOM as it
+  // snaps between uses, and phones drop pointer capture when an element moves.
+  let dragId = null;
+  function onDragMove(e){
+    if(e.pointerId!==dragId) return;
+    e.preventDefault();
     let p = 0;
     rungs.forEach((r,k) => { const b = r.getBoundingClientRect(); if(e.clientY > b.top + b.height/2) p = k+1; });
-    if(p!==pos){ setPos(p); line.setPointerCapture(e.pointerId); }
+    if(p!==pos) setPos(p);
+    // let the page follow the finger near the screen edges
+    if(e.clientY < 64) window.scrollBy(0, -14);
+    else if(e.clientY > window.innerHeight - 64) window.scrollBy(0, 14);
+  }
+  function endDrag(e){
+    if(e && e.pointerId!==dragId) return;
+    dragId = null;
+    line.classList.remove('dragging');
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', endDrag);
+    window.removeEventListener('pointercancel', endDrag);
+  }
+  line.addEventListener('pointerdown', e => {
+    if(dragId!==null) endDrag();
+    dragId = e.pointerId;
+    e.preventDefault();
+    line.classList.add('dragging');
+    window.addEventListener('pointermove', onDragMove, {passive:false});
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
   });
-  ['pointerup','pointercancel'].forEach(t => line.addEventListener(t, () => { dragging = false; }));
 
   /* ---------- shared state ----------
      The vote and the evidence wall live in Supabase. */
