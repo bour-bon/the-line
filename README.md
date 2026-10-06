@@ -58,3 +58,9 @@ No sign-up, no ads, no analytics. A visitor who votes or posts gets an anonymous
 ## Development
 
 Automated tests in [`tests/`](tests/) load the page in a headless browser, exercise every interactive part, and probe the database's access rules directly.
+
+## License
+
+- **Code:** [MIT](LICENSE)
+- **Writing, verdicts and charts:** [CC BY 4.0](LICENSE-CONTENT.md). Reuse them freely with credit to THE LINE.
+- **Cited figures** belong to their original publishers, listed in the sources.
