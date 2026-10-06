@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Where do you draw the line? A sourced, live ledger of what AI costs the planet: money, energy, water, carbon and minerals."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#fafaf9}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Where do you draw the line? A sourced, live ledger of what AI costs the planet: money, energy, water, carbon and minerals."><link rel="canonical" href="https://bour-bon.github.io/the-line/"><meta name="theme-color" content="#16181A"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2316181A'/%3E%3Crect x='3' y='11' width='26' height='3.5' fill='%23F2C100'/%3E%3Crect x='3' y='17.5' width='26' height='3.5' fill='%23F2C100'/%3E%3C/svg%3E"><meta property="og:type" content="website"><meta property="og:site_name" content="THE LINE"><meta property="og:title" content="THE LINE: Where do you draw the line?"><meta property="og:description" content="What AI costs the planet in electricity, water, carbon, minerals and money. Every number sourced. Then you decide what's worth it."><meta property="og:url" content="https://bour-bon.github.io/the-line/"><meta property="og:image" content="https://bour-bon.github.io/the-line/og-image.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Where do you draw the line? Double yellow road line on asphalt."><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="THE LINE: Where do you draw the line?"><meta name="twitter:description" content="What AI costs the planet in electricity, water, carbon, minerals and money. Every number sourced."><meta name="twitter:image" content="https://bour-bon.github.io/the-line/og-image.png"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#fafaf9}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
 <title>THE LINE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -793,8 +793,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   ['pointerup','pointercancel'].forEach(t => line.addEventListener(t, () => { dragging = false; }));
 
   /* ---------- shared state ----------
-     On the public site the vote and the evidence wall live in Supabase.
-     Inside claude.ai they use the artifact's own store. */
+     The vote and the evidence wall live in Supabase. */
   const SUPABASE_URL = 'https://xmktoolywrjqlzalopze.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhta3Rvb2x5d3JqcWx6YWxvcHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNjI5MDIsImV4cCI6MjEwNjgzODkwMn0.8f6U_cfvztbHlEL-45GdsDzUXLH9wRZ6jzsDD-NLQMU';   // public anon key; access is enforced by the rules in supabase/schema.sql
   const TURNSTILE_SITE_KEY = '0x4AAAAAAFPB_1hY6zY5m3c3';   // Cloudflare Turnstile site key (public); its secret lives only in Supabase
@@ -802,7 +801,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   const MAX_POSTS = 10;
   let counts = Array(N+1).fill(0);   // number of lines drawn at each position
   let posts = [];                    // visible evidence links, newest first
-  let saved = null, myId = null, amOwner = false, backend = null;
+  let saved = null, myId = null, backend = null;
 
   function cleanUrl(s){
     try { const u = new URL(String(s).trim()); return (u.protocol==='https:'||u.protocol==='http:') ? u : null; } catch(e){ return null; }
@@ -890,9 +889,9 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
       const host = document.createElement('span'); host.textContent = p.url.hostname.replace(/^www\./,'');
       meta.append(tag, host);
       if(p.at){ const dt = document.createElement('span'); dt.textContent = new Date(p.at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); meta.append(dt); }
-      if(backend && ((myId && p.author===myId) || amOwner)){
+      if(backend && myId && p.author===myId){
         const rm = document.createElement('button'); rm.type='button'; rm.className='rm';
-        rm.textContent = p.author===myId ? 'Delete' : 'Remove';
+        rm.textContent = 'Delete';
         rm.onclick = () => removePost(p);
         meta.append(rm);
       }
@@ -907,7 +906,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     if(!backend) return;
     try {
       await backend.remove(p);
-      $('pStatus').textContent = p.author===myId ? 'Deleted.' : 'Removed.';
+      $('pStatus').textContent = 'Deleted.';
     } catch(e){ $('pStatus').textContent = 'Couldn\'t remove that link. Try again in a moment.'; }
   }
   $('postForm').addEventListener('submit', async e => {
@@ -936,60 +935,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   });
   renderWall();
 
-  /* ---------- backend: claude.ai artifact store ---------- */
-  async function claudeBackend(){
-    const [db, u] = await Promise.all([claude.use('db'), claude.use('user')]);
-    if(!db) return null;
-    myId = u ? await u.id() : null;
-    amOwner = u ? await u.isOwner() : false;
-    let wall = {};
-    db.collection('evidence').onSnapshot(snap => {
-      const next = {}, flat = [];
-      snap.docs.forEach(doc => {
-        const x = doc.data();
-        if(!x || !Array.isArray(x.posts)) return;
-        next[doc.id] = x.posts;
-        x.posts.slice(0, MAX_POSTS).forEach(raw => { const p = normalizePost(raw, doc.id); if(p) flat.push(p); });
-      });
-      wall = next;
-      posts = flat.sort((a,b) => b.at - a.at);
-      renderWall();
-    }, () => { $('pStatus').textContent = 'The wall stopped updating. Reload to reconnect.'; });
-    db.collection('lines').onSnapshot(snap => {
-      const c = Array(N+1).fill(0);
-      snap.docs.forEach(doc => {
-        const x = doc.data();
-        if(!x || typeof x.pos!=='number' || x.pos<0 || x.pos>N) return;
-        c[x.pos]++;
-        if(doc.id===myId && saved===null) saved = x.pos;
-      });
-      counts = c;
-      renderHist();
-    }, () => { $('worldNote').textContent = 'The shared tally stopped updating. Reload to reconnect.'; });
-    return {
-      async saveVote(p){
-        if(!myId) throw {code:'no_identity'};
-        await db.collection('lines').doc(myId).set({pos:p, at:Date.now()});
-      },
-      async post(p){
-        if(!myId) throw {code:'no_identity'};
-        const mine = Array.isArray(wall[myId]) ? wall[myId].slice() : [];
-        mine.unshift(Object.assign({id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), at: Date.now()}, p));
-        await db.collection('evidence').doc(myId).set({posts: mine});
-      },
-      async remove(p){
-        const rest = (wall[p.author]||[]).filter(x => String(x.id)!==p.id);
-        await db.collection('evidence').doc(p.author).set({posts: rest});
-      },
-      errorText(e, what){
-        if(e && (e.code==='invalid_argument' || e.code==='no_identity')) return 'This view can read but not add. Ask the owner for Contributor access.';
-        if(e && e.code==='quota_exceeded') return 'The store is full. The owner needs to clear old entries.';
-        return what==='vote' ? 'Couldn\'t save your line just now. Try again in a moment.' : 'Couldn\'t post just now. Try again in a moment.';
-      }
-    };
-  }
-
-  /* ---------- backend: Supabase (public site) ---------- */
+  /* ---------- backend: Supabase ---------- */
   function loadScript(src){
     return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
   }
@@ -1100,15 +1046,11 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   }
 
   (async () => {
-    const inClaude = !!(window.claude && window.claude.use);
     try {
-      if(inClaude) backend = await claudeBackend();
-      else if(SUPABASE_URL && SUPABASE_KEY) backend = await supabaseBackend();
+      if(SUPABASE_URL && SUPABASE_KEY) backend = await supabaseBackend();
     } catch(e){ backend = null; }
     if(!backend){
-      $('worldNote').textContent = inClaude
-        ? 'Sign in to claude.ai to see and join the shared tally. Your line is saved on this device.'
-        : 'The shared tally isn\'t available right now. Your line is saved on this device.';
+      $('worldNote').textContent = 'The shared tally isn\'t available right now. Your line is saved on this device.';
       $('pStatus').textContent = 'The wall isn\'t available right now.';
     }
     renderHist();

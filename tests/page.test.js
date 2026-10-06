@@ -1,43 +1,31 @@
 // Loads THE LINE in jsdom and exercises every interactive part.
-// Usage: node page.test.js [claude|none|supabase]
+// Usage: node page.test.js [supabase|captcha|none]
+//   supabase  full run against the live database (needs Cloudflare's always-pass test secret set in Supabase)
+//   captcha   live database with the real Turnstile secret: confirms a failed human check is refused and explained
+//   none      no backend configured
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const MODE = process.argv[2] || 'claude';
+const MODE = process.argv[2] || 'captcha';
 const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
 const errors = [];
 const vc = new VirtualConsole();
 vc.on('jsdomError', e => { if(!/Could not parse CSS|Could not load link/.test(e.message)) errors.push(e.message); });
 vc.on('error', e => errors.push(String(e)));
 
-// in-memory stand-in for the claude.ai artifact store
-function mockClaude(){
-  const store = { lines:{}, evidence:{} }, subs = { lines:[], evidence:[] };
-  const snap = name => ({ docs: Object.entries(store[name]).map(([id,d]) => ({ id, data:() => d })) });
-  const emit = name => subs[name].forEach(f => f(snap(name)));
-  const db = { collection: name => ({
-    onSnapshot(next){ subs[name].push(next); setTimeout(() => next(snap(name)), 0); return () => {}; },
-    doc: id => ({ set: async d => { store[name][id] = JSON.parse(JSON.stringify(d)); setTimeout(() => emit(name), 0); } })
-  })};
-  const user = { id: async () => 'u_me', isOwner: async () => true };
-  return { store, api: { use: async n => n==='db' ? db : n==='user' ? user : null } };
-}
-
-const mock = mockClaude();
 let src = html;
-if(MODE !== 'supabase'){
+if(MODE === 'none'){
   // simulate a site with no backend configured
   src = src.replace(/const SUPABASE_URL = '[^']*';/, "const SUPABASE_URL = '';");
 }
 const dom = new JSDOM(src, {
   url: 'https://bour-bon.github.io/the-line/',
   runScripts: 'dangerously',
-  resources: MODE === 'supabase' ? 'usable' : undefined,
+  resources: MODE === 'none' ? undefined : 'usable',
   pretendToBeVisual: true,
   virtualConsole: vc,
   beforeParse(w){
     w.matchMedia = q => ({ matches:false, media:q, addEventListener(){}, removeEventListener(){} });
-    if(MODE === 'claude') w.claude = mock.api;
     // jsdom has no fetch; lend it Node's real one so supabase-js can reach the database
     Object.assign(w, { fetch, Headers, Request, Response, AbortController });
     // stand-in for Cloudflare Turnstile; Cloudflare's dummy token only passes when Supabase uses the test secret
@@ -109,6 +97,17 @@ function submitPost(url, stance, title, note){
     check('saving says device-only', /Saved on this device/.test($('saveStatus').textContent), $('saveStatus').textContent);
     submitPost('https://example.org/report', 'support'); await sleep(50);
     check('posting explains the wall is off', /isn't taking posts/.test($('pStatus').textContent), $('pStatus').textContent);
+  } else if(MODE === 'captcha'){
+    console.log('Human check (live database, real Turnstile secret)');
+    check('live tally loads', await until(() => /Be the first|drawn/.test($('worldNote').textContent)), $('worldNote').textContent);
+    const before = $('worldNote').textContent;
+    $('saveBtn').click();
+    check('vote without a valid human check is refused', await until(() => /human check/i.test($('saveStatus').textContent)), $('saveStatus').textContent);
+    check('save button is usable again', !$('saveBtn').disabled);
+    await sleep(500);
+    check('tally unchanged', $('worldNote').textContent===before, [before, $('worldNote').textContent]);
+    submitPost('https://www.iea.org/reports/key-questions-on-energy-and-ai', 'support');
+    check('post without a valid human check is refused', await until(() => /human check/i.test($('pStatus').textContent)), $('pStatus').textContent);
   } else {
     console.log('Shared tally (' + MODE + ')');
     await until(() => /Be the first|drawn/.test($('worldNote').textContent));
