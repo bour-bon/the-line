@@ -1,71 +1,60 @@
 # THE LINE
 
-**Where do you draw the line?**
+### Where do you draw the line?
 
-A single-page, sourced ledger of what AI costs the planet: money, electricity, water, carbon, minerals and land. It ends by asking each visitor which uses of AI are worth that cost.
+**[bour-bon.github.io/the-line](https://bour-bon.github.io/the-line/)**
 
-## What's on the page
+THE LINE is an independent, fully sourced account of what artificial intelligence costs the planet: the electricity it burns, the water it consumes, the carbon it emits, the minerals it digs up and the money it absorbs. It sets those costs against what AI is actually used for and asks each visitor to decide which uses are worth it.
 
-- **Live counters.** Electricity, water, CO₂ and Big Tech spending, ticking since the visitor arrived or since 1 January. They are calculated from the latest annual estimates, not metered.
-- **Money.** Big Tech's 2026 capex compared with climate adaptation finance for developing countries.
-- **Energy.** Data-centre electricity in 2025 and 2030, and how little of it is explained by chatbot text.
-- **Water and carbon.** Estimated ranges for AI systems in 2025.
-- **Minerals, land and waste.** Copper, gallium, e-waste, land and water projections.
-- **In their own words.** What Google, Microsoft, Amazon, Meta and xAI disclosed in 2026, plus the case for the defence.
-- **Your subscription.** A calculator for the footprint of text, image and video use.
-- **Draw your line.** Visitors rank which uses of AI are worth the cost.
-- **Evidence wall.** Visitors post links that support or challenge the page.
-- **Sources.** A dated table, last checked on 5 October 2026.
+---
 
-## Running it
+## On the page
 
-It's one static file with no build step, published with GitHub Pages. Open `index.html` in a browser or serve the folder from any static host.
+- **Live counters.** AI's electricity, water and carbon, plus Big Tech's capital spending, accumulating in real time from the latest annual estimates.
+- **Money.** Four companies' 2026 data-centre budgets against the climate adaptation finance developing countries actually receive.
+- **Energy.** Data-centre electricity today and in 2030, and how little of it anyone explains.
+- **Water and carbon.** Peer-reviewed ranges for AI systems in 2025.
+- **Minerals, land and waste.** Copper, gallium, land and e-waste.
+- **In their own words.** What Google, Microsoft, Amazon, Meta and xAI disclosed in 2026, alongside the strongest case for the defence.
+- **Your subscription.** What a month of text, image and video generation costs in energy, water and CO₂.
+- **Draw your line.** Visitors rank eight uses of AI, from science to synthetic video, and see where everyone else draws it.
+- **Evidence wall.** Anyone can post a source that supports the page, or one that challenges it. Both stay visible.
 
-## Backend: the vote and the evidence wall
+## Method
 
-The shared vote and the evidence wall store their data in [Supabase](https://supabase.com). The project URL and the public anon key sit at the top of the script in `index.html`. The anon key is public by design. What protects the data is the access rules in [`supabase/schema.sql`](supabase/schema.sql):
+Every figure is a published estimate with a date and a citation. Nothing is metered live: the counters spread the latest annual figures evenly across the year, and the page says so. Where studies disagree, the page shows the range rather than picking a number. Editorial verdicts are visually marked and kept apart from the data.
 
-- Visitors get an anonymous account the first time they vote or post. Nobody has to sign up.
-- **Votes:** one per person, a position from 0 to 8. Individual votes are private, and everyone can read the totals through `vote_counts()`.
-- **Evidence links:** must be `http(s)` links. Titles are capped at 120 characters and notes at 200. Each person can post at most 10 links, one every 30 seconds. Posts can be deleted by their author but never edited.
-- The server sets each post's timestamp and visibility, so a visitor can't fake either.
+### Principal sources
 
-If the page is opened inside claude.ai, it uses the artifact's own storage instead.
+| Source | Used for |
+|---|---|
+| IEA, *Key Questions on Energy and AI* (2026) and *Energy and AI* (2025) | Data-centre electricity, AI's share, emissions offsets |
+| de Vries-Gao, *Patterns* (2025) | Carbon and water footprint of AI systems |
+| UNU-INWEH, *Environmental Cost of AI's Energy Use* (2026) | Water, land and emissions projections |
+| Google, Microsoft and Amazon environmental reports (2026) | Company emissions, electricity and water |
+| UNEP, *Adaptation Gap Report* (2025) | Climate adaptation finance |
+| Stanford HAI, *AI Index* (2026) | Global AI investment |
+| IMF, *Finance & Development* (2025) | Critical minerals |
+| Wang et al., *Nature Computational Science* (2024) | Generative-AI e-waste |
+| Chatterji et al., NBER (2025) | How people use ChatGPT |
+| MIT Technology Review (2025) | Energy per text, image and video generation |
 
-### Moderating the evidence wall
+The full dated source list is at the bottom of the site.
 
-In Supabase, open **Table Editor → evidence** and set `hidden` to `true` on a row. The link disappears for everyone except its author. To ban someone, delete their user under **Authentication → Users**; their posts and vote are deleted with them.
+## Corrections
 
-### Setting up a fresh Supabase project
+If a number is wrong or out of date, post the evidence on the site's evidence wall or [open an issue](https://github.com/bour-bon/the-line/issues).
 
-1. Create the project and run `supabase/schema.sql` in the SQL Editor.
-2. Turn on **Authentication → Sign In / Providers → Allow anonymous sign-ins**.
-3. Put the project URL and anon key into `SUPABASE_URL` and `SUPABASE_KEY` in `index.html`.
+## Built with
 
-Never put the `service_role` key in the page.
+- A single static page in plain HTML, CSS and JavaScript, with no framework and no build step, hosted on GitHub Pages
+- [Supabase](https://supabase.com) for the shared vote and evidence wall, protected by row-level security ([`supabase/schema.sql`](supabase/schema.sql))
+- [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) to keep bots off the vote and the wall
 
-## Tests
+## Privacy
 
-- `tests/page.test.js` loads the page in jsdom, a headless browser, and exercises every interactive part. Install with `npm install` in `tests/`, then run:
-  - `node page.test.js supabase` for the live database
-  - `node page.test.js claude` for a mock of the claude.ai store
-  - `node page.test.js none` for no backend
-- `tests/security.ps1` attacks the database directly, bypassing the page, to prove the access rules hold.
-- `tests/limit.ps1` checks the 10-links-per-person cap. It takes about 5 minutes.
+No sign-up, no ads, no analytics. A visitor who votes or posts gets an anonymous ID, stored in their browser, so they can change their vote or delete their own links. Individual votes are never published, only the totals. Fonts load from Google Fonts, and the human check runs on Cloudflare Turnstile.
 
-## Sources
+## Development
 
-Every figure is cited on the page. Key sources:
-
-- IEA, *Key Questions on Energy and AI* (April 2026) and *Energy and AI* (2025)
-- de Vries-Gao, *Patterns* (2025): AI's carbon and water footprint
-- UNU-INWEH, *Environmental Cost of AI's Energy Use* (June 2026)
-- Google, Microsoft and Amazon 2026 environmental and sustainability reports
-- UNEP *Adaptation Gap Report 2025*
-- Stanford *AI Index 2026*
-- IMF *Finance & Development* (2025): minerals
-- Wang et al., *Nature Computational Science* (2024): e-waste
-- Chatterji et al., NBER (2025): *How People Use ChatGPT*
-- MIT Technology Review (2025): energy per AI task
-
-The verdicts in yellow are THE LINE's opinion. Everything else is published data.
+Automated tests in [`tests/`](tests/) load the page in a headless browser, exercise every interactive part, and probe the database's access rules directly.

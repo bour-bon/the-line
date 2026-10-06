@@ -209,6 +209,8 @@ input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 .sources li{color:var(--muted)}
 .sources li a{color:var(--ink)}
 footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
+.site-foot{display:flex;flex-wrap:wrap;gap:var(--s3) var(--s5);align-items:baseline;justify-content:space-between;border-top:2px solid var(--ink);margin-top:var(--s8)}
+.site-foot .brand{color:var(--ink);font-size:20px}
 
 /* evidence summary strip under the meters */
 .wallsum{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;margin-top:var(--s4);padding:var(--s3) var(--s4);border:1px solid var(--ink);text-decoration:none;font-size:15px;justify-content:space-between}
@@ -265,6 +267,8 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   .rc .lnk{text-align:left}
   .cols,.post{grid-template-columns:minmax(0,1fr)}
 }
+
+.captcha{display:flex;min-height:0}
 
 /* tooltip */
 .tip{position:fixed;pointer-events:none;z-index:10;background:var(--ink);color:var(--ground);font:500 13px/1.35 var(--mono);padding:8px 10px;border-radius:2px;max-width:280px}
@@ -469,6 +473,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
           <p class="big" id="myLineText">–</p>
           <button class="btn" id="saveBtn">Draw my line here</button>
           <p class="status" id="saveStatus"></p>
+          <div class="captcha" id="capVote" hidden></div>
         </div>
         <div class="tally">
           <p class="label">Where everyone draws it</p>
@@ -508,6 +513,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
         </select></div>
       <div class="f wide"><label for="pNote">What it shows <span class="opt">optional, 200 characters</span></label><input id="pNote" type="text" maxlength="200" placeholder="The one fact that matters"></div>
       <div class="f wide row"><button class="btn" type="submit" id="pBtn">Post link</button><p class="status" id="pStatus"></p></div>
+      <div class="captcha wide" id="capPost" hidden></div>
     </form>
     <div class="cols">
       <div class="col"><h3 class="col-h">Supports <span class="num" id="cS">0</span></h3><ul class="feed" id="feedS"></ul></div>
@@ -552,7 +558,11 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     <p class="foot">Also used: Meta's ads ranking at trillion-parameter scale (<a href="https://engineering.fb.com/2025/11/10/ml-applications/metas-generative-ads-model-gem-the-central-brain-accelerating-ads-recommendation-ai-innovation/" target="_blank" rel="noopener">Meta Engineering, Nov 2025</a>). Calculator assumptions: ~450 g CO₂ per kWh, the approximate world grid average, and Google's on-site water ratio of ~1.1 mL per Wh.</p>
   </section>
 
-  <footer>THE LINE · prototype · figures last checked 5 October 2026</footer>
+  <footer class="site-foot">
+    <span class="brand">THE LINE</span>
+    <span>Figures last checked 5 October 2026 · Every number is cited above</span>
+    <span><a href="https://github.com/bour-bon/the-line" target="_blank" rel="noopener">Open source on GitHub</a> · Found an error? Post it on the <a href="#wall">evidence wall</a></span>
+  </footer>
 </div>
 <div class="tip" id="tip" hidden></div>
 
@@ -787,6 +797,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
      Inside claude.ai they use the artifact's own store. */
   const SUPABASE_URL = 'https://xmktoolywrjqlzalopze.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhta3Rvb2x5d3JqcWx6YWxvcHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNjI5MDIsImV4cCI6MjEwNjgzODkwMn0.8f6U_cfvztbHlEL-45GdsDzUXLH9wRZ6jzsDD-NLQMU';   // public anon key; access is enforced by the rules in supabase/schema.sql
+  const TURNSTILE_SITE_KEY = '';   // Cloudflare Turnstile site key (public); its secret lives only in Supabase
   const SECTIONS = {money:'Money', energy:'Energy', water:'Water & carbon', minerals:'Minerals & waste', sub:'Subscriptions', uses:'Uses of AI', general:'Whole picture'};
   const MAX_POSTS = 10;
   let counts = Array(N+1).fill(0);   // number of lines drawn at each position
@@ -982,18 +993,53 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   function loadScript(src){
     return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
   }
+  // Cloudflare Turnstile: usually invisible, shows a one-click check only when it's unsure.
+  async function turnstileToken(where){
+    if(!TURNSTILE_SITE_KEY) return null;
+    if(!window.turnstile) await loadScript('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit');
+    const box = $(where);
+    box.textContent = '';
+    box.hidden = false;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { done(); reject({message:'captcha_timeout'}); }, 120000);
+      let id = null;
+      function done(){ clearTimeout(timer); try { if(id!==null) window.turnstile.remove(id); } catch(e){} box.hidden = true; }
+      id = window.turnstile.render(box, {
+        sitekey: TURNSTILE_SITE_KEY,
+        appearance: 'interaction-only',
+        action: where==='capVote' ? 'vote' : 'post',
+        callback: token => { done(); resolve(token); },
+        'error-callback': () => { done(); reject({message:'captcha_failed'}); },
+        'expired-callback': () => { done(); reject({message:'captcha_failed'}); }
+      });
+    });
+  }
   async function supabaseBackend(){
     await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js');
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
     const { data:{ session } } = await sb.auth.getSession();
     myId = session ? session.user.id : null;
     // Visitors get an anonymous account only when they first vote or post.
-    async function ensureUser(){
+    // A Turnstile check guards that moment, so bots can't mint accounts in bulk.
+    async function ensureUser(where){
       if(myId) return myId;
-      const { data, error } = await sb.auth.signInAnonymously();
+      const captchaToken = await turnstileToken(where);
+      const { data, error } = await sb.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
       if(error) throw error;
       myId = data.user.id;
       return myId;
+    }
+    // If the stored session belongs to an account that no longer exists, start fresh once.
+    async function asUser(where, fn){
+      const uid = await ensureUser(where);
+      try { return await fn(uid); }
+      catch(e){
+        const m = String((e && e.message) || '');
+        if(!/JWT|sub claim|does not exist|foreign key/i.test(m)) throw e;
+        await sb.auth.signOut().catch(() => {});
+        myId = null;
+        return fn(await ensureUser(where));
+      }
     }
     async function refreshVotes(){
       const { data, error } = await sb.rpc('vote_counts');
@@ -1021,15 +1067,17 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     }, 30000);
     return {
       async saveVote(p){
-        const uid = await ensureUser();
-        const { error } = await sb.from('votes').upsert({voter: uid, pos: p, updated_at: new Date().toISOString()});
-        if(error) throw error;
+        await asUser('capVote', async uid => {
+          const { error } = await sb.from('votes').upsert({voter: uid, pos: p, updated_at: new Date().toISOString()});
+          if(error) throw error;
+        });
         await refreshVotes();
       },
       async post(p){
-        await ensureUser();
-        const { error } = await sb.from('evidence').insert(p);
-        if(error) throw error;
+        await asUser('capPost', async () => {
+          const { error } = await sb.from('evidence').insert(p);
+          if(error) throw error;
+        });
         await refreshPosts();
       },
       async remove(p){
@@ -1042,6 +1090,8 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
         if(/limit_reached/.test(m)) return 'You\'ve posted ' + MAX_POSTS + ' links. Delete one to post another.';
         if(/too_fast/.test(m)) return 'One link every 30 seconds, please. Try again in a moment.';
         if(e && e.code==='23514') return 'That link or text isn\'t valid. Check the address and keep the note under 200 characters.';
+        if(/captcha_(failed|timeout)/.test(m)) return 'The human check didn\'t complete. Try again.';
+        if(/captcha/i.test(m)) return 'The human check failed. Reload the page and try again.';
         if(/anonymous/i.test(m)) return 'New votes and posts are switched off right now.';
         if(/rate limit/i.test(m)) return 'Too many new visitors from your network right now. Try again in an hour.';
         return what==='vote' ? 'Couldn\'t save your line just now. Try again in a moment.' : 'Couldn\'t post just now. Try again in a moment.';

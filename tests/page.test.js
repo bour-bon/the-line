@@ -40,6 +40,8 @@ const dom = new JSDOM(src, {
     if(MODE === 'claude') w.claude = mock.api;
     // jsdom has no fetch; lend it Node's real one so supabase-js can reach the database
     Object.assign(w, { fetch, Headers, Request, Response, AbortController });
+    // stand-in for Cloudflare Turnstile; Cloudflare's dummy token only passes when Supabase uses the test secret
+    w.turnstile = { render(el, o){ setTimeout(() => o.callback(process.env.CAPTCHA_TOKEN || 'XXXX.DUMMY.TOKEN.XXXX'), 10); return 1; }, remove(){} };
   }
 });
 const w = dom.window, d = w.document, $ = id => d.getElementById(id);
