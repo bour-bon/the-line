@@ -88,9 +88,14 @@ function submitPost(url, stance, title, note){
   console.log('Touch and drag (mobile)');
   const css = [...d.querySelectorAll('style')].map(s => s.textContent).join('\n');
   const blocks = css.match(/[^{}]*\{[^{}]*touch-action\s*:\s*none[^{}]*\}/g) || [];
-  check('only the yellow line blocks scrolling, so the page scrolls on phones', blocks.length===1 && /^\s*\.dragline\s*\{/.test(blocks[0]), blocks.map(b => b.trim().split('{')[0]));
-  const ptr = (type, target, y) => { const e = new w.MouseEvent(type, { bubbles:true, cancelable:true, clientY:y }); Object.defineProperty(e, 'pointerId', { value:7 }); target.dispatchEvent(e); return e; };
+  check('only the line\'s label blocks scrolling, so the page scrolls on phones', blocks.length===1 && /\.dragline \.tag\s*\{/.test(blocks[0]), blocks.map(b => b.trim().split('{')[0]));
+  const ptr = (type, target, y, kind='mouse') => { const e = new w.MouseEvent(type, { bubbles:true, cancelable:true, clientY:y }); Object.defineProperty(e, 'pointerId', { value:7 }); Object.defineProperty(e, 'pointerType', { value:kind }); target.dispatchEvent(e); return e; };
   const dl = d.querySelector('.dragline');
+  ptr('pointerdown', dl, 0, 'touch');
+  check('a finger on the band (not the label) does not grab the line', !dl.classList.contains('dragging'));
+  ptr('pointerdown', dl.querySelector('.tag'), 0, 'touch');
+  check('a finger on the label grabs the line', dl.classList.contains('dragging'));
+  ptr('pointerup', w, 0, 'touch');
   ptr('pointerdown', dl, 0);
   check('pressing the line starts a drag', dl.classList.contains('dragging'));
   // jsdom lays nothing out, so every use sits at y=0: moving below that drags the line to the bottom

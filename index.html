@@ -188,10 +188,14 @@ input[type=range]{width:100%;accent-color:var(--ink);height:28px}
 .rung.below h4{text-decoration:line-through;text-decoration-thickness:2px}
 .pill{display:inline-flex;align-items:center;gap:6px;font:600 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--rule);padding:5px 8px;border-radius:2px;white-space:nowrap;color:var(--ink);background:var(--surface)}
 .pill i{width:8px;height:8px;border-radius:50%;display:inline-block}
-.dragline{position:relative;height:34px;margin:2px 0;cursor:grab;display:grid;align-content:center;gap:5px;outline-offset:2px;touch-action:none}
+.dragline{position:relative;height:34px;margin:2px 0;cursor:grab;display:grid;align-content:center;gap:5px;outline-offset:2px}
 .dragline.dragging{cursor:grabbing}
 .dragline.dragging .tag{transform:translate(-50%,-50%) scale(1.08)}
-@media (pointer:coarse){ .dragline{height:44px} }
+/* On touchscreens only the label is the grab handle; the rest of the band scrolls the page. */
+@media (pointer:coarse){
+  .dragline{height:52px;cursor:default}
+  .dragline .tag{padding:12px 18px;font-size:15px;touch-action:none;box-shadow:0 2px 0 var(--line-edge)}
+}
 .dragline::before,.dragline::after{content:"";height:5px;background:var(--line);box-shadow:0 0 0 1px var(--line-edge)}
 .dragline:active{cursor:grabbing}
 .dragline .tag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--line);color:var(--on-line);font:800 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--line-edge);white-space:nowrap}
@@ -465,7 +469,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     <div class="part-head">
       <p class="label">Draw your line</p>
       <h2 id="h-draw">What is AI worth burning the planet for?</h2>
-      <p class="prose">Uses are ranked from most to least defensible. Everything above your line is worth the cost; everything below is not. Drag the line, click a row, or focus the line and use the arrow keys.</p>
+      <p class="prose">Uses are ranked from most to least defensible. Everything above your line is worth the cost; everything below is not. Tap a use to move your line below it, or drag the “My line” label. On a keyboard, focus the line and use the arrow keys.</p>
     </div>
     <div class="road" aria-hidden="true"></div>
     <div class="ladder-wrap">
@@ -749,7 +753,7 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
   line.setAttribute('aria-label','Your line');
   line.setAttribute('aria-valuemin','0');
   line.setAttribute('aria-valuemax',String(N));
-  line.innerHTML = '<span class="tag">My line</span>';
+  line.innerHTML = '<span class="tag"><span aria-hidden="true">↕ </span>My line</span>';
   const rungs = USES.map((u,k) => {
     const li = document.createElement('li');
     li.className = 'rung';
@@ -809,6 +813,8 @@ footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
     window.removeEventListener('pointercancel', endDrag);
   }
   line.addEventListener('pointerdown', e => {
+    // a finger on the band (not the label) is scrolling the page, not grabbing the line
+    if(e.pointerType!=='mouse' && !e.target.closest('.tag')) return;
     if(dragId!==null) endDrag();
     dragId = e.pointerId;
     e.preventDefault();
