@@ -1,0 +1,975 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Where do you draw the line? A sourced, live ledger of what AI costs the planet: money, energy, water, carbon and minerals."><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#fafaf9}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>THE LINE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: one long road. A double yellow "no passing" line is the only accent; it marks the hero and becomes the draggable line at the end. Data marks stay in ink. */
+:root{
+  --ground:#E8EAEB;      /* poured concrete */
+  --surface:#F4F5F5;
+  --ink:#121416;
+  --muted:#565C63;
+  --rule:#C5CACE;
+  --mark-2:#8E959C;      /* comparison bars */
+  --line:#F2C100;        /* road-marking yellow */
+  --line-edge:#8A6D00;
+  --on-line:#121416;
+  --v-worth:#2E7A4C;
+  --v-ok:#3D6E8F;
+  --v-meh:#A86A00;
+  --v-over:#C2402B;
+  --v-worst:#8E1B1B;
+  --hatch:rgba(18,20,22,.22);
+  --display:"Big Shoulders Display","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+  --body:"Public Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:72px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#16181A;    /* asphalt */
+    --surface:#1E2124;
+    --ink:#E9EBEC;
+    --muted:#9AA1A8;
+    --rule:#33383C;
+    --mark-2:#6A7178;
+    --line:#F2C100;
+    --line-edge:#F2C100;
+    --on-line:#121416;
+    --v-worth:#5FBF85;
+    --v-ok:#79A9CC;
+    --v-meh:#E0A43A;
+    --v-over:#EE6A52;
+    --v-worst:#F08A8A;
+    --hatch:rgba(233,235,236,.22);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#16181A;
+  --surface:#1E2124;
+  --ink:#E9EBEC;
+  --muted:#9AA1A8;
+  --rule:#33383C;
+  --mark-2:#6A7178;
+  --line:#F2C100;
+  --line-edge:#F2C100;
+  --on-line:#121416;
+  --v-worth:#5FBF85;
+  --v-ok:#79A9CC;
+  --v-meh:#E0A43A;
+  --v-over:#EE6A52;
+  --v-worst:#F08A8A;
+  --hatch:rgba(233,235,236,.22);
+}
+
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;padding:0 clamp(16px,4vw,48px)}
+.wrap{max-width:1120px;margin:0 auto}
+a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--line);outline-offset:3px}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:.92;text-transform:uppercase}
+p{margin:0}
+.label{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.prose{max-width:62ch;color:var(--ink)}
+.prose.muted{color:var(--muted)}
+
+/* masthead */
+.mast{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s4);flex-wrap:wrap;padding-block:var(--s5) var(--s4);border-bottom:1px solid var(--rule)}
+.brand{font-family:var(--display);font-weight:900;font-size:22px;letter-spacing:.06em}
+.live{display:inline-flex;align-items:center;gap:var(--s2)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--v-over);display:inline-block;animation:blink 1.6s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+
+/* hero */
+.hero{padding-block:var(--s7) var(--s5);display:grid;gap:var(--s5)}
+.hero h1{font-weight:900;font-size:clamp(56px,11.5vw,148px);letter-spacing:-.005em}
+.hero h1 span{display:block}
+.hero .lede{font-size:clamp(18px,2vw,21px);max-width:60ch}
+.road{position:relative;height:22px;margin-inline:calc(-1 * clamp(16px,4vw,48px));display:grid;align-content:center;gap:6px}
+.road::before,.road::after{content:"";display:block;height:6px;background:var(--line);box-shadow:0 0 0 1px var(--line-edge)}
+
+/* counters */
+.meter-head{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);flex-wrap:wrap;padding-top:var(--s5)}
+.seg{display:inline-flex;border:1px solid var(--ink);border-radius:2px;overflow:hidden}
+.seg button{font:600 13px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;background:transparent;color:var(--ink);border:0;padding:10px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:2px solid var(--ink);margin-top:var(--s3)}
+.meter{padding:var(--s4) var(--s4) var(--s5) 0;border-right:1px solid var(--rule);display:grid;gap:var(--s2);align-content:start}
+.meter+.meter{padding-left:var(--s4)}
+.meter:last-child{border-right:0}
+.meter .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;font-size:clamp(22px,2.6vw,32px);line-height:1.1;word-break:break-all}
+.meter .u{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.meter .k{font-size:14px;color:var(--muted);max-width:28ch}
+.foot{font-size:13px;color:var(--muted);padding-top:var(--s3);max-width:80ch}
+
+/* sections */
+section.part{padding-block:var(--s8) 0;display:grid;gap:var(--s5)}
+.part-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:var(--s6);align-items:end;border-top:2px solid var(--ink);padding-top:var(--s4)}
+.part-head h2{font-weight:800;font-size:clamp(40px,6vw,76px)}
+.part-head .label{grid-column:1/-1}
+.verdict{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(24px,3vw,34px);line-height:1;text-wrap:balance}
+.verdict em{font-style:normal;background:var(--line);color:var(--on-line);padding:0 .12em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+
+/* bar charts */
+.chart{display:grid;gap:var(--s3)}
+.bar-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(0,3fr);gap:var(--s4);align-items:center}
+.bar-row .name{font-size:15px;line-height:1.3}
+.bar-row .name small{display:block;color:var(--muted);font-size:13px}
+.track{position:relative;height:30px;display:flex;align-items:center;gap:var(--s2)}
+.bar{height:100%;border-radius:0 4px 4px 0;background:var(--ink);min-width:3px}
+.bar.cmp{background:var(--mark-2)}
+.bar-val{font-family:var(--mono);font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:var(--s5);flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:var(--s2)}
+.sw{width:14px;height:10px;display:inline-block;background:var(--ink);border-radius:1px}
+.sw.cmp{background:var(--mark-2)}
+.sw.hatch{background:repeating-linear-gradient(135deg,var(--hatch) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px var(--muted)}
+
+.stack{display:flex;height:34px;gap:2px}
+.stack > div{height:100%}
+.stack .ai{background:var(--ink)}
+.stack .rest{background:var(--mark-2)}
+.stack .first{border-radius:0}
+.stack .last{border-radius:0 4px 4px 0}
+.stack .unk{background:repeating-linear-gradient(135deg,var(--hatch) 0 2px,transparent 2px 7px);box-shadow:inset 0 0 0 1px var(--muted)}
+
+.split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6)}
+.panel{display:grid;gap:var(--s4);align-content:start}
+.panel h3{font-size:28px;font-weight:800}
+
+/* range bars */
+.range{position:relative;height:44px;margin-top:var(--s2)}
+.range .axis{position:absolute;left:0;right:0;top:20px;height:1px;background:var(--rule)}
+.range .span{position:absolute;top:12px;height:16px;background:var(--ink);border-radius:4px}
+.range .tick{position:absolute;top:4px;width:2px;height:32px;background:var(--v-over)}
+.range .tl{position:absolute;top:30px;font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap;transform:translateX(-50%)}
+.range-legend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;gap:var(--s3);flex-wrap:wrap}
+
+/* facts list */
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--rule)}
+.fact{padding:var(--s4) var(--s4) var(--s5) 0;border-bottom:1px solid var(--rule);display:grid;gap:var(--s2);align-content:start}
+.fact:not(:nth-child(3n+1)){padding-left:var(--s4);border-left:1px solid var(--rule)}
+.fact .big{font-family:var(--display);font-weight:800;font-size:clamp(34px,4vw,48px);line-height:1}
+.fact p{font-size:15px}
+.fact .src{font-size:12px;color:var(--muted)}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:var(--s6);background:var(--surface);border:1px solid var(--rule);padding:var(--s5)}
+.presets{display:flex;gap:var(--s2);flex-wrap:wrap}
+.chip{font:600 13px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--ink);background:transparent;color:var(--ink);padding:9px 12px;border-radius:2px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.sl{display:grid;gap:var(--s2)}
+.sl label{display:flex;justify-content:space-between;gap:var(--s3);font-size:15px}
+.sl output{font-family:var(--mono);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--ink);height:28px}
+.bill{display:grid;gap:var(--s4);align-content:start}
+.bill-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s3);align-items:baseline;border-bottom:1px dashed var(--rule);padding-bottom:var(--s2)}
+.bill-row .val{font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums;text-align:right}
+.bill-row .eq{grid-column:1/-1;font-size:14px;color:var(--muted)}
+.bill .paid{font-family:var(--display);font-weight:800;font-size:28px;text-transform:uppercase;line-height:1}
+.sharebar{display:grid;gap:var(--s2)}
+.sharebar .stack{height:22px}
+.sharebar .t{background:var(--ink)}
+.sharebar .i{background:var(--mark-2)}
+.sharebar .v{background:var(--v-over)}
+
+/* the ladder */
+.ladder-wrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:var(--s6);align-items:start}
+.ladder{list-style:none;margin:0;padding:0;position:relative;user-select:none;touch-action:none}
+.rung{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:var(--s3);align-items:start;padding:var(--s3) 0;border-bottom:1px solid var(--rule);cursor:pointer;transition:opacity .2s}
+.rung .n{font-family:var(--mono);font-size:13px;color:var(--muted);padding-top:3px}
+.rung h4{margin:0;font-size:18px;line-height:1.25;font-weight:700}
+.rung p{font-size:14px;color:var(--muted);margin-top:2px}
+.rung.below{opacity:.42}
+.rung.below h4{text-decoration:line-through;text-decoration-thickness:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--rule);padding:5px 8px;border-radius:2px;white-space:nowrap;color:var(--ink);background:var(--surface)}
+.pill i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dragline{position:relative;height:34px;margin:2px 0;cursor:grab;display:grid;align-content:center;gap:5px;outline-offset:2px}
+.dragline::before,.dragline::after{content:"";height:5px;background:var(--line);box-shadow:0 0 0 1px var(--line-edge)}
+.dragline:active{cursor:grabbing}
+.dragline .tag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--line);color:var(--on-line);font:800 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--line-edge);white-space:nowrap}
+.side{display:grid;gap:var(--s5);position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}
+.tally{display:grid;gap:var(--s3)}
+.tally .big{font-family:var(--display);font-weight:800;font-size:40px;line-height:1}
+.hist{display:grid;gap:4px}
+.hist-row{display:grid;grid-template-columns:120px minmax(0,1fr) 40px;gap:var(--s2);align-items:center;font-size:13px}
+.hist-row .hb{height:12px;background:var(--ink);border-radius:0 3px 3px 0;min-width:2px}
+.hist-row.me .hb{background:var(--line);box-shadow:0 0 0 1px var(--line-edge)}
+.hist-row .c{font-family:var(--mono);text-align:right;color:var(--muted)}
+.btn{font:800 18px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--ground);border:0;padding:14px 18px;border-radius:2px;cursor:pointer;justify-self:start}
+.btn:disabled{opacity:.5;cursor:default}
+.status{font-size:14px;color:var(--muted);min-height:1.5em}
+
+/* sources */
+.sources ol{margin:0;padding-left:1.4em;display:grid;gap:var(--s2);font-size:14px;max-width:90ch}
+.sources li{color:var(--muted)}
+.sources li a{color:var(--ink)}
+footer{padding-block:var(--s7) var(--s7);color:var(--muted);font-size:13px}
+
+/* evidence summary strip under the meters */
+.wallsum{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;margin-top:var(--s4);padding:var(--s3) var(--s4);border:1px solid var(--ink);text-decoration:none;font-size:15px;justify-content:space-between}
+.wallsum:hover{background:var(--surface)}
+.wallsum b{font-weight:600}
+
+/* receipts */
+.receipts{display:grid;border-top:1px solid var(--rule)}
+.rc{display:grid;grid-template-columns:88px minmax(140px,1fr) minmax(0,2.4fr) minmax(120px,1fr);gap:var(--s4);padding:var(--s4) 0;border-bottom:1px solid var(--rule);align-items:baseline}
+.rc .d{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.rc .who{font-family:var(--display);font-weight:800;font-size:24px;text-transform:uppercase;line-height:1}
+.rc .what{font-size:15px}
+.rc .what strong{font-family:var(--mono);font-weight:600;font-size:17px;display:block;margin-bottom:2px}
+.rc .lnk{font-size:13px;text-align:right}
+.defence{display:grid;gap:var(--s3);padding:var(--s5);background:var(--surface);border-left:6px solid var(--mark-2)}
+
+/* evidence wall */
+.wall-sum{display:grid;gap:var(--s2)}
+.wall-sum .stack{height:14px}
+.wall-sum .s{background:var(--ink)}
+.wall-sum .c{background:var(--mark-2)}
+.post{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4);padding:var(--s5);background:var(--surface);border:1px solid var(--rule)}
+.post .f{display:grid;gap:6px;align-content:start;margin:0;border:0;padding:0;min-width:0}
+.post .wide{grid-column:1/-1}
+.post .row{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap}
+.post label,.post legend{font-size:14px;font-weight:600;padding:0}
+.post .opt{font-weight:400;color:var(--muted)}
+.post input[type=url],.post input[type=text],.post select{font:inherit;font-size:16px;color:var(--ink);background:var(--ground);border:1px solid var(--muted);border-radius:2px;padding:10px 12px;width:100%}
+.post .radio{display:flex;gap:var(--s2);align-items:center;font-weight:400;font-size:15px;padding:3px 0}
+.post .radio input{accent-color:var(--ink);width:18px;height:18px}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6)}
+.col-h{font-size:30px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:var(--s2)}
+.col-h .num{font-size:18px;font-weight:500}
+.feed{list-style:none;margin:0;padding:0;display:grid}
+.feed li{display:grid;gap:4px;padding:var(--s3) 0;border-bottom:1px solid var(--rule)}
+.feed .meta{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.feed .tag{text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--rule);padding:2px 6px;border-radius:2px}
+.feed a.t{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.feed .note{font-size:14px;color:var(--muted);overflow-wrap:anywhere}
+.feed .rm{font:600 12px/1 var(--mono);text-transform:uppercase;background:none;border:0;color:var(--v-over);cursor:pointer;padding:2px 0;margin-left:auto}
+.feed .empty{color:var(--muted);font-size:15px;border-bottom:0}
+
+/* sources table */
+.src-table{overflow-x:auto;border-top:2px solid var(--ink)}
+.src-table table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+.src-table th{text-align:left;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:var(--s3) var(--s3) var(--s3) 0;border-bottom:1px solid var(--rule)}
+.src-table td{padding:var(--s3) var(--s3) var(--s3) 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.src-table td:first-child{font-family:var(--mono);white-space:nowrap;color:var(--muted)}
+.src-table td:nth-child(2){width:32%}
+
+@media (max-width:860px){
+  .rc{grid-template-columns:72px minmax(0,1fr)}
+  .rc .what,.rc .lnk{grid-column:2}
+  .rc .lnk{text-align:left}
+  .cols,.post{grid-template-columns:minmax(0,1fr)}
+}
+
+/* tooltip */
+.tip{position:fixed;pointer-events:none;z-index:10;background:var(--ink);color:var(--ground);font:500 13px/1.35 var(--mono);padding:8px 10px;border-radius:2px;max-width:280px}
+
+@media (max-width:860px){
+  .meters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .meter:nth-child(2){border-right:0}
+  .meter:nth-child(3){padding-left:0}
+  .meter:nth-child(n+3){border-top:1px solid var(--rule)}
+  .part-head,.split,.calc,.ladder-wrap{grid-template-columns:minmax(0,1fr)}
+  .facts{grid-template-columns:minmax(0,1fr)}
+  .fact:not(:nth-child(3n+1)){padding-left:0;border-left:0}
+  .side{position:static}
+}
+@media (max-width:520px){
+  .meters{grid-template-columns:minmax(0,1fr)}
+  .meter,.meter+.meter{padding-left:0;border-right:0}
+  .meter+.meter{border-top:1px solid var(--rule)}
+  .bar-row{grid-template-columns:minmax(0,1fr)}
+  .bar-row .name{order:-1}
+  .rung{grid-template-columns:22px minmax(0,1fr)}
+  .rung .pill{grid-column:2;justify-self:start}
+  .hist-row{grid-template-columns:96px minmax(0,1fr) 32px}
+}
+@media (prefers-reduced-motion:reduce){
+  .live i{animation:none}
+  .rung{transition:none}
+}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="brand">THE LINE</div>
+    <div class="label live"><i aria-hidden="true"></i> Live estimate · counters run on published annual figures</div>
+  </header>
+
+  <div class="hero">
+    <h1><span>Where do you</span><span>draw the line?</span></h1>
+    <p class="lede">AI is being built faster than any infrastructure in history. It burns electricity, drinks water, eats copper and swallows money that could go elsewhere. Here is what it costs, where it goes, and whether it's worth it. Then you decide.</p>
+  </div>
+  <div class="road" aria-hidden="true"></div>
+
+  <div class="meter-head">
+    <p class="label" id="meterLabel">While you've been reading · 0 s</p>
+    <div class="seg" role="group" aria-label="Counter period">
+      <button id="modeSince" aria-pressed="true">Since you arrived</button>
+      <button id="modeYear" aria-pressed="false">So far this year</button>
+    </div>
+  </div>
+  <div class="meters" aria-live="off">
+    <div class="meter"><span class="label">Electricity</span><span class="v" id="cE">0</span><span class="u">kWh · AI-focused data centres</span><span class="k">An average EU home uses about 10 kWh a day.</span></div>
+    <div class="meter"><span class="label">Water</span><span class="v" id="cW">0</span><span class="u">litres · AI systems, on-site + power</span><span class="k">Midpoint of a 312–765 billion litre yearly range.</span></div>
+    <div class="meter"><span class="label">Carbon</span><span class="v" id="cC">0</span><span class="u">kg CO₂ · AI systems</span><span class="k">Midpoint of a 33–80 million tonne yearly range.</span></div>
+    <div class="meter"><span class="label">Money</span><span class="v" id="cM">$0</span><span class="u">USD · Big Tech capex, 2026 guidance</span><span class="k">Amazon, Alphabet, Microsoft and Meta, mostly AI build-out.</span></div>
+  </div>
+  <p class="foot">Nobody meters AI in real time. These counters spread the latest annual estimates evenly over the year: 155 TWh of electricity in AI-focused data centres in 2025 (IEA, April 2026), 312–765 billion litres of water and 33–80 Mt of CO₂ for AI systems in 2025 (de Vries-Gao, <i>Patterns</i>), and about $730 billion in 2026 capex guidance after the July 2026 earnings. Electricity use in AI-focused data centres grew about 50% in 2025, so this year's real numbers are higher.</p>
+  <a class="wallsum" href="#wall"><span class="label">Evidence wall</span><span><b class="num" id="sumS">0</b> links back this page · <b class="num" id="sumC">0</b> challenge it</span><span aria-hidden="true">→</span></a>
+
+  <!-- MONEY -->
+  <section class="part" id="money" aria-labelledby="h-money">
+    <div class="part-head">
+      <p class="label">Money</p>
+      <h2 id="h-money">$28 to $1</h2>
+      <p class="verdict">Four companies will spend <em>$28 on data centres</em> for every $1 of international public money that helps poor countries survive climate change.</p>
+    </div>
+    <div class="chart" id="moneyChart" role="img" aria-label="Bar chart: Big Tech capex 2026 730 billion dollars; global corporate AI investment 2025 581.7 billion; climate adaptation needed per year 310 billion; international adaptation finance delivered 2023 26 billion."></div>
+    <div class="legend"><span><i class="sw"></i>Into AI</span><span><i class="sw cmp"></i>For climate adaptation in developing countries</span></div>
+    <p class="prose muted">Adaptation means sea walls, drought-proof crops, early-warning systems. UNEP says developing countries need at least $310 billion a year by 2035 and received $26 billion in 2023, down from $28 billion the year before. Big Tech's 2026 data-centre budget alone could close that gap twice over.</p>
+  </section>
+
+  <!-- ENERGY -->
+  <section class="part" id="energy" aria-labelledby="h-energy">
+    <div class="part-head">
+      <p class="label">Energy</p>
+      <h2 id="h-energy">Doubling by 2030</h2>
+      <p class="verdict">Your chatbot answers use about 2% of the power in AI data centres. <em>The other 98% goes on things nobody discloses.</em></p>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <h3>Data centre electricity, TWh</h3>
+        <div class="chart" id="energyChart" role="img" aria-label="Stacked bars: 2025, 485 TWh total of which 155 TWh AI-focused; 2030 projection, 945 TWh total of which about 465 TWh AI-focused."></div>
+        <div class="legend"><span><i class="sw"></i>AI-focused data centres</span><span><i class="sw cmp"></i>All other data centres</span></div>
+        <p class="prose muted">Data centres used about 1.5% of the world's electricity in 2025. The IEA expects 3% by 2030, with AI taking half. About 60% of that power still comes from coal, gas and oil.</p>
+      </div>
+      <div class="panel">
+        <h3>Where AI's 155 TWh goes</h3>
+        <div class="stack" id="whereStack" role="img" aria-label="Text chatbot queries about 2 percent; undisclosed uses about 98 percent.">
+          <div class="ai first" style="width:2%" data-tip="Text chatbot queries: ~2% (~3 TWh)"></div>
+          <div class="unk last" style="width:98%" data-tip="Not broken down by any company: ~98% (~152 TWh). Training runs, ad and feed ranking, image and video generation, enterprise and military contracts all sit in here."></div>
+        </div>
+        <div class="legend"><span><i class="sw"></i>Text chatbot queries ~2%</span><span><i class="sw hatch"></i>Undisclosed ~98%</span></div>
+        <p class="prose muted">Analysis of IEA figures finds text queries explain about 2% of the electricity used by AI-focused data centres. Training, recommendation engines, ad targeting, image and video generation, and corporate workloads make up the rest. No company publishes that split.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WATER & CARBON -->
+  <section class="part" id="water" aria-labelledby="h-water">
+    <div class="part-head">
+      <p class="label">Water &amp; carbon</p>
+      <h2 id="h-water">A New York of smoke</h2>
+      <p class="verdict">AI systems emitted about as much CO₂ in 2025 as New York City, and <em>used as much water as the world drinks in bottled water.</em></p>
+    </div>
+    <div class="split">
+      <div class="panel">
+        <h3>CO₂ from AI systems, 2025</h3>
+        <div class="range" id="co2Range" role="img" aria-label="Estimated range 32.6 to 79.7 million tonnes; New York City 2023 emissions 52.2 million tonnes falls inside the range."></div>
+        <div class="range-legend"><span>Estimate: 32.6–79.7 Mt</span><span style="color:var(--v-over)">│ New York City, 2023: 52.2 Mt</span></div>
+      </div>
+      <div class="panel">
+        <h3>Water from AI systems, 2025</h3>
+        <div class="range" id="waterRange" role="img" aria-label="Estimated range 312.5 to 764.6 billion litres."></div>
+        <div class="range-legend"><span>Estimate: 312.5–764.6 billion litres</span></div>
+        <p class="prose muted">Most of it is indirect: water evaporated at the power plants feeding the servers. Companies usually report only what their own cooling towers use; the study finds indirect water use is probably three to four times higher than official estimates. Two-thirds of new US data centres built since 2022 sit in water-stressed regions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MINERALS & LAND -->
+  <section class="part" id="minerals" aria-labelledby="h-minerals">
+    <div class="part-head">
+      <p class="label">Minerals, land &amp; waste</p>
+      <h2 id="h-minerals">Dug up, thrown out</h2>
+      <p class="verdict">AI's e-waste could grow <em>about 1,000 times over</em> between 2023 and 2030.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="big num">500,000 t</span><p>Copper per year for data centres by 2030, about 2% of world demand.</p><span class="src">IEA via IMF F&amp;D</span></div>
+      <div class="fact"><span class="big num">1 mine</span><p>A single hyperscale campus holds roughly as much copper as a mid-size mine produces in a year.</p><span class="src">IMF F&amp;D, 2025</span></div>
+      <div class="fact"><span class="big num">&gt;10%</span><p>of world gallium demand could go to data centres. China refines 80–90% of global silicon, gallium and rare earths.</p><span class="src">IMF F&amp;D, 2025</span></div>
+      <div class="fact"><span class="big num">2,400 t</span><p>E-waste from generative AI hardware in 2023.</p><span class="src">Nature Computational Science, 2024</span></div>
+      <div class="fact"><span class="big num">1.2–5 Mt</span><p>Cumulative generative-AI e-waste by 2030, depending on how fast it spreads. Keeping servers one year longer would avoid more than 3 Mt.</p><span class="src">Nature Computational Science, 2024</span></div>
+      <div class="fact"><span class="big num">79%</span><p>of Dublin's electricity went to data centres in 2023. In Ireland as a whole it was 21%; in Virginia, 26%.</p><span class="src">IEA via Carbon Brief</span></div>
+      <div class="fact"><span class="big num">14,500 km²</span><p>Land footprint of data centres and their power supply by 2030, larger than Northern Ireland.</p><span class="src">UNU-INWEH, June 2026</span></div>
+      <div class="fact"><span class="big num">9.3 trillion L</span><p>Data centre water use by 2030 in a high-AI scenario, the basic household needs of 1.3 billion people.</p><span class="src">UNU-INWEH, June 2026</span></div>
+      <div class="fact"><span class="big num">600 million</span><p>people in Sub-Saharan Africa could have had their basic yearly household water from what data centres used in 2025.</p><span class="src">UNU-INWEH, June 2026</span></div>
+    </div>
+  </section>
+
+  <!-- RECEIPTS -->
+  <section class="part" id="receipts" aria-labelledby="h-rec">
+    <div class="part-head">
+      <p class="label">The receipts · 2026 disclosures</p>
+      <h2 id="h-rec">In their own words</h2>
+      <p class="verdict">Every Big Tech company that reported this year said the same thing: <em>AI pushed their emissions to records.</em></p>
+    </div>
+    <div class="receipts" id="receiptList"></div>
+    <div class="defence">
+      <p class="label">The case for the defence</p>
+      <p class="prose">The IEA calculates that if existing AI tools were widely adopted in energy, industry and transport, they could cut about 1,400 Mt of CO₂ a year by 2035, around five times what data centres would emit. The same report says that is about 5% of energy emissions, far short of what climate targets need, and that it depends on adoption nobody has guaranteed. Microsoft also reports replenishing more water than it withdrew in its last fiscal year, for the first time.</p>
+      <p class="foot"><a href="https://www.iea.org/reports/energy-and-ai/ai-and-climate-change" target="_blank" rel="noopener">IEA, Energy and AI: AI and climate change</a> · <a href="https://www.theregister.com/on-prem/2026/07/10/ai-driven-datacenter-builds-drive-microsofts-emissions-up-a-quarter-in-one-year/5269924" target="_blank" rel="noopener">Microsoft 2026 report, via The Register</a></p>
+    </div>
+  </section>
+
+  <!-- SUBSCRIPTION -->
+  <section class="part" id="sub" aria-labelledby="h-sub">
+    <div class="part-head">
+      <p class="label">Your subscription</p>
+      <h2 id="h-sub">You pay $20. The planet pays this.</h2>
+      <p class="verdict">Typing is cheap. <em>Five seconds of AI video uses more power than 3,000 text answers.</em></p>
+    </div>
+    <div class="calc">
+      <div class="panel">
+        <div class="presets" role="group" aria-label="Usage presets">
+          <button class="chip" data-p="light" aria-pressed="false">Light</button>
+          <button class="chip" data-p="typical" aria-pressed="true">Typical</button>
+          <button class="chip" data-p="power" aria-pressed="false">Power user</button>
+          <button class="chip" data-p="video" aria-pressed="false">Video maker</button>
+        </div>
+        <div class="sl"><label for="inT">Text prompts a day <output id="oT">20</output></label><input id="inT" type="range" min="0" max="300" step="5" value="20"></div>
+        <div class="sl"><label for="inI">Images a day <output id="oI">2</output></label><input id="inI" type="range" min="0" max="100" step="1" value="2"></div>
+        <div class="sl"><label for="inV">5-second videos a day <output id="oV">0</output></label><input id="inV" type="range" min="0" max="30" step="1" value="0"></div>
+        <p class="foot">Per item: text 0.3 Wh (Google and OpenAI report 0.24–0.34 Wh), image 1.2 Wh, 5-second video 944 Wh (MIT Technology Review measurements). Water uses Google's on-site ratio of about 1.1 mL per Wh, so the real figure including power plants is higher. CO₂ assumes about 450 g per kWh, roughly the world grid average.</p>
+      </div>
+      <div class="bill" aria-live="polite">
+        <p class="label">Your month, 30 days</p>
+        <div class="bill-row"><span>Electricity</span><span class="val" id="bE">–</span><span class="eq" id="qE"></span></div>
+        <div class="bill-row"><span>Water, on-site</span><span class="val" id="bW">–</span><span class="eq" id="qW"></span></div>
+        <div class="bill-row"><span>CO₂</span><span class="val" id="bC">–</span><span class="eq" id="qC"></span></div>
+        <div class="sharebar">
+          <span class="label">Where your energy went</span>
+          <div class="stack" id="shareStack"></div>
+          <div class="legend"><span><i class="sw"></i>Text</span><span><i class="sw cmp"></i>Images</span><span><i class="sw" style="background:var(--v-over)"></i>Video</span></div>
+        </div>
+        <p class="paid" id="bVerdict">–</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE LINE -->
+  <section class="part" id="draw" aria-labelledby="h-draw">
+    <div class="part-head">
+      <p class="label">Draw your line</p>
+      <h2 id="h-draw">What is AI worth burning the planet for?</h2>
+      <p class="prose">Uses are ranked from most to least defensible. Everything above your line is worth the cost; everything below is not. Drag the line, click a row, or focus the line and use the arrow keys.</p>
+    </div>
+    <div class="road" aria-hidden="true"></div>
+    <div class="ladder-wrap">
+      <ol class="ladder" id="ladder"></ol>
+      <aside class="side">
+        <div class="tally">
+          <p class="label">Your line</p>
+          <p class="big" id="myLineText">–</p>
+          <button class="btn" id="saveBtn">Draw my line here</button>
+          <p class="status" id="saveStatus"></p>
+        </div>
+        <div class="tally">
+          <p class="label">Where everyone draws it</p>
+          <p class="big" id="worldText">–</p>
+          <p class="status" id="worldNote">Loading other people's lines…</p>
+          <div class="hist" id="hist"></div>
+        </div>
+        <div class="tally">
+          <p class="label">THE LINE's verdict</p>
+          <p class="prose">After coding and real work. Science, climate, learning and real work earn their footprint. Answers a search engine already gives, feeds that sell your attention, companions built to keep you hooked, and synthetic video for clicks don't.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- EVIDENCE WALL -->
+  <section class="part" id="wall" aria-labelledby="h-wall">
+    <div class="part-head">
+      <p class="label">Evidence wall</p>
+      <h2 id="h-wall">Prove us right. Or wrong.</h2>
+      <p class="prose">Post a report, study or article that backs up a number on this page, or one that challenges it. Links that challenge us stay up next to the ones that agree. That's how you know the rest of the page is honest.</p>
+    </div>
+    <div class="wall-sum">
+      <div class="stack" id="wallStack" role="img" aria-label="Share of posted links that support versus challenge the page"></div>
+      <div class="legend"><span><i class="sw"></i><b class="num" id="wS">0</b>&nbsp;support</span><span><i class="sw cmp"></i><b class="num" id="wC">0</b>&nbsp;challenge</span><span id="wSec"></span></div>
+    </div>
+    <form class="post" id="postForm" novalidate>
+      <div class="f wide"><label for="pUrl">Link</label><input id="pUrl" type="url" inputmode="url" placeholder="https://" maxlength="500" required></div>
+      <div class="f wide"><label for="pTitle">Headline <span class="opt">optional</span></label><input id="pTitle" type="text" maxlength="120" placeholder="e.g. Microsoft emissions up 25% in one year"></div>
+      <fieldset class="f"><legend>This link</legend>
+        <label class="radio"><input type="radio" name="pStance" id="pS" value="support" checked> Supports the page</label>
+        <label class="radio"><input type="radio" name="pStance" id="pC" value="challenge"> Challenges it</label>
+      </fieldset>
+      <div class="f"><label for="pSec">About</label>
+        <select id="pSec">
+          <option value="money">Money</option><option value="energy">Energy</option><option value="water">Water &amp; carbon</option><option value="minerals">Minerals, land &amp; waste</option><option value="sub">Subscriptions</option><option value="uses">Uses of AI</option><option value="general" selected>The whole picture</option>
+        </select></div>
+      <div class="f wide"><label for="pNote">What it shows <span class="opt">optional, 200 characters</span></label><input id="pNote" type="text" maxlength="200" placeholder="The one fact that matters"></div>
+      <div class="f wide row"><button class="btn" type="submit" id="pBtn">Post link</button><p class="status" id="pStatus"></p></div>
+    </form>
+    <div class="cols">
+      <div class="col"><h3 class="col-h">Supports <span class="num" id="cS">0</span></h3><ul class="feed" id="feedS"></ul></div>
+      <div class="col"><h3 class="col-h">Challenges <span class="num" id="cC2">0</span></h3><ul class="feed" id="feedC"></ul></div>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section class="part sources" id="sources" aria-labelledby="h-src">
+    <div class="part-head">
+      <p class="label">Sources &amp; method · checked 5 October 2026</p>
+      <h2 id="h-src">Check us</h2>
+      <p class="prose">Every number is a published estimate, not a live reading. Where studies disagree we show the range. Verdicts in yellow are THE LINE's opinion; everything else is data.</p>
+    </div>
+    <div class="src-table">
+      <table>
+        <thead><tr><th>Published</th><th>Source</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td>Jul 2026</td><td><a href="https://www.geekwire.com/2026/the-cost-of-the-ai-boom-amazon-emissions-jump-16-as-company-stands-by-net-zero-pledge/" target="_blank" rel="noopener">Amazon 2025 Sustainability Report</a> (GeekWire)</td><td>Emissions +16% to 80.85 Mt CO₂e, its largest one-year jump; electricity emissions +34%.</td></tr>
+          <tr><td>Jul 2026</td><td><a href="https://www.theregister.com/on-prem/2026/07/10/ai-driven-datacenter-builds-drive-microsofts-emissions-up-a-quarter-in-one-year/5269924" target="_blank" rel="noopener">Microsoft 2026 Environmental Sustainability Report</a> (The Register)</td><td>Emissions +25% in a year to ~20.3 Mt CO₂e, ~58% above its 2020 baseline; electricity +24%.</td></tr>
+          <tr><td>Jul 2026</td><td><a href="https://valueaddvc.com/ai-spending" target="_blank" rel="noopener">Big Tech Q2 2026 earnings</a> (ValueAdd tracker), <a href="https://www.cnbc.com/2026/07/28/hyperscalers-face-higher-capex-scrutiny-after-alphabet-report-panned.html" target="_blank" rel="noopener">CNBC</a></td><td>2026 capex guidance ~$730B at midpoints: Amazon ~$220B, Alphabet $195–205B, Microsoft ~$175B, Meta $130–145B.</td></tr>
+          <tr><td>Jul 2026</td><td><a href="https://fortune.com/2026/07/24/why-youre-paying-for-data-center-electricity-power/" target="_blank" rel="noopener">Fortune</a>, <a href="https://ieefa.org/resources/projected-data-center-growth-spurs-pjm-capacity-prices-factor-10" target="_blank" rel="noopener">IEEFA</a></td><td>PJM capacity prices rose from $28.92 to $329.17 per MW-day; data centres drove 63% of one auction's increase, $9.3B on household bills.</td></tr>
+          <tr><td>Jul 2026</td><td><a href="https://www.technology.org/2026/07/15/xai-59-unpermitted-gas-turbines-southaven-colossus-2/" target="_blank" rel="noopener">Technology.org</a>, <a href="https://www.selc.org/news/xai-built-an-illegal-power-plant-to-power-its-data-center/" target="_blank" rel="noopener">SELC</a>, <a href="https://earthjustice.org/press/2026/naacp-asks-court-for-emergency-action-to-stop-illegal-air-pollution-from-xais-data-center-power-plant" target="_blank" rel="noopener">Earthjustice</a></td><td>xAI ran 59 gas turbines without permits for Colossus 2; 30 of them could emit ~2,500 tons of NOx a year against a 100-ton permit threshold.</td></tr>
+          <tr><td>Jun 2026</td><td><a href="https://blog.google/company-news/outreach-and-initiatives/sustainability/2026-environmental-report/" target="_blank" rel="noopener">Google 2026 Environmental Report</a>, <a href="https://www.axios.com/2026/06/30/google-ai-boom-emissions-power-use" target="_blank" rel="noopener">Axios</a></td><td>Electricity +37%, emissions +18% (its largest rise on record), water +34% to 10.9 billion gallons.</td></tr>
+          <tr><td>Jun 2026</td><td><a href="https://envirotecmagazine.com/2026/06/08/un-report-warns-ai-boom-could-intensify-pressure-on-water-land-and-climate-systems/" target="_blank" rel="noopener">UNU-INWEH, Environmental Cost of AI's Energy Use</a></td><td>2025: ~448 TWh and ~189 Mt CO₂ from data centres. 2030: 9.3 trillion litres of water, 14,500+ km² of land.</td></tr>
+          <tr><td>Apr 2026</td><td><a href="https://www.iea.org/reports/key-questions-on-energy-and-ai/executive-summary" target="_blank" rel="noopener">IEA, Key Questions on Energy and AI</a>; <a href="https://hannahritchie.substack.com/p/ai-electricity-2025" target="_blank" rel="noopener">Hannah Ritchie's summary</a></td><td>Data centres 485 TWh in 2025 (+17%); AI-focused 155 TWh (+50%); 950 TWh by 2030. Text queries ≈ 2% of AI data-centre power.</td></tr>
+          <tr><td>Apr 2026</td><td><a href="https://www.sec.gov/Archives/edgar/data/0001326801/000121465926005915/o511264px14a6g.htm" target="_blank" rel="noopener">Meta shareholder proposal filing (SEC)</a></td><td>Filed by shareholders, not Meta: location-based electricity emissions up ~150% from 2019 to 2024.</td></tr>
+          <tr><td>Apr 2026</td><td><a href="https://c3.unu.edu/blog/2026-stanford-ai-index-report-takeaways" target="_blank" rel="noopener">Stanford AI Index 2026</a> (UNU summary)</td><td>Global corporate AI investment $581.7B in 2025, up 130%.</td></tr>
+          <tr><td>Dec 2025</td><td>de Vries-Gao, <a href="https://www.cell.com/patterns/fulltext/S2666-3899(25)00278-8" target="_blank" rel="noopener"><i>Patterns</i></a></td><td>AI systems in 2025: 32.6–79.7 Mt CO₂ and 312.5–764.6 billion litres of water.</td></tr>
+          <tr><td>Nov 2025</td><td><a href="https://www.imf.org/en/publications/fandd/issues/2025/12/inside-the-ai-led-resource-race-thijs-van-de-graaf" target="_blank" rel="noopener">IMF Finance &amp; Development</a></td><td>Copper >500,000 t/yr by 2030; >10% of gallium demand; China refines 80–90% of key inputs; two-thirds of new US data centres in water-stressed areas.</td></tr>
+          <tr><td>Oct 2025</td><td><a href="https://www.unep.org/news-and-stories/press-release/slow-climate-adaptation-threatening-lives-and-economies" target="_blank" rel="noopener">UNEP Adaptation Gap Report 2025</a></td><td>Developing countries need $310–365B a year for adaptation by 2035; received $26B in 2023.</td></tr>
+          <tr><td>Sep 2025</td><td><a href="https://www.nber.org/papers/w34255" target="_blank" rel="noopener">Chatterji et al., How People Use ChatGPT (NBER)</a></td><td>73% of messages are not work; 24% information seeking; ~10% tutoring.</td></tr>
+          <tr><td>Sep 2025</td><td><a href="https://www.carbonbrief.org/ai-five-charts-that-put-data-centre-energy-use-and-emissions-into-context" target="_blank" rel="noopener">Carbon Brief</a> (updated Jul 2026)</td><td>~60% of data-centre power from fossil fuels; Dublin 79%, Ireland 21%, Virginia 26% of electricity to data centres.</td></tr>
+          <tr><td>Aug 2025</td><td><a href="https://rcrwireless.com/20250821/fundamentals/gemini-prompt-google" target="_blank" rel="noopener">Google, Gemini per-prompt footprint</a> (RCR Wireless)</td><td>Median text prompt: 0.24 Wh, 0.26 mL water, 0.03 g CO₂e.</td></tr>
+          <tr><td>Aug 2025</td><td><a href="https://the-decoder.com/character-ai-keeps-young-people-glued-to-their-smartphones-for-an-average-of-80-minutes-a-day/" target="_blank" rel="noopener">The Decoder</a></td><td>Character.AI users average ~80 minutes a day, per its CEO.</td></tr>
+          <tr><td>May 2025</td><td><a href="https://www.technologyreview.com/2025/05/20/1116327/ai-energy-usage-climate-footprint-big-tech/" target="_blank" rel="noopener">MIT Technology Review</a></td><td>Measured energy per text answer, image and 5-second video (3.4 MJ ≈ 944 Wh).</td></tr>
+          <tr><td>Apr 2025</td><td><a href="https://www.iea.org/reports/energy-and-ai/ai-and-climate-change" target="_blank" rel="noopener">IEA, Energy and AI</a></td><td>The defence: widespread AI adoption could cut ~1,400 Mt CO₂ by 2035, about 5% of energy emissions.</td></tr>
+          <tr><td>Oct 2024</td><td>Wang et al., <a href="https://www.nature.com/articles/s43588-024-00712-6" target="_blank" rel="noopener"><i>Nature Computational Science</i></a></td><td>Generative-AI e-waste: 2,400 t in 2023; 1.2–5 Mt cumulative by 2030.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot">Also used: Meta's ads ranking at trillion-parameter scale (<a href="https://engineering.fb.com/2025/11/10/ml-applications/metas-generative-ads-model-gem-the-central-brain-accelerating-ads-recommendation-ai-innovation/" target="_blank" rel="noopener">Meta Engineering, Nov 2025</a>). Calculator assumptions: ~450 g CO₂ per kWh, the approximate world grid average, and Google's on-site water ratio of ~1.1 mL per Wh.</p>
+  </section>
+
+  <footer>THE LINE · prototype · figures last checked 5 October 2026</footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const YEAR_S = 365*24*3600;
+  const RATE = { e:155e9/YEAR_S, w:538.55e9/YEAR_S, c:56.15e9/YEAR_S, m:730e9/YEAR_S };
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = (n,d=0) => n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+  /* ---------- live counters ---------- */
+  const t0 = performance.now();
+  let mode = 'since';
+  function tick(){
+    let s, lbl;
+    if(mode==='since'){
+      s = (performance.now()-t0)/1000;
+      lbl = 'While you\'ve been reading · ' + fmt(Math.floor(s)) + ' s';
+    } else {
+      const now = new Date();
+      s = (now - Date.UTC(now.getUTCFullYear(),0,1))/1000;
+      lbl = 'So far in ' + now.getUTCFullYear() + ' · day ' + Math.ceil(s/86400);
+    }
+    $('meterLabel').textContent = lbl;
+    const big = mode==='year';
+    $('cE').textContent = fmt(RATE.e*s, big?0:1);
+    $('cW').textContent = fmt(RATE.w*s, 0);
+    $('cC').textContent = fmt(RATE.c*s, 0);
+    $('cM').textContent = '$' + fmt(RATE.m*s, 0);
+  }
+  tick();
+  setInterval(tick, reduce ? 1000 : 100);
+  function setMode(m){
+    mode = m;
+    $('modeSince').setAttribute('aria-pressed', m==='since');
+    $('modeYear').setAttribute('aria-pressed', m==='year');
+    tick();
+  }
+  $('modeSince').onclick = () => setMode('since');
+  $('modeYear').onclick = () => setMode('year');
+
+  /* ---------- tooltip ---------- */
+  const tip = $('tip');
+  document.addEventListener('pointermove', e => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if(!t){ tip.hidden = true; return; }
+    tip.textContent = t.dataset.tip;
+    tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + 14, y = e.clientY + 14;
+    if(x + w > innerWidth - 8) x = e.clientX - w - 14;
+    if(y + h > innerHeight - 8) y = e.clientY - h - 14;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+
+  /* ---------- money bars ---------- */
+  const money = [
+    {n:'Big Tech capex, 2026', s:'Guidance after July 2026 earnings', v:730, ai:true},
+    {n:'Corporate AI investment, 2025', s:'Global, Stanford AI Index', v:581.7, ai:true},
+    {n:'Adaptation needed per year', s:'Developing countries by 2035, UNEP', v:310, ai:false},
+    {n:'Adaptation finance delivered', s:'International public money, 2023', v:26, ai:false}
+  ];
+  const mMax = 730;
+
+  /* ---------- receipts ---------- */
+  const RECEIPTS = [
+    {d:'Jun 2026', who:'Google', big:'+18% emissions', what:'Its largest annual rise on record. Electricity +37%, water +34% to 10.9 billion gallons.', u:'https://www.axios.com/2026/06/30/google-ai-boom-emissions-power-use', l:'2026 Environmental Report'},
+    {d:'Jul 2026', who:'Microsoft', big:'+25% emissions', what:'About 20.3 Mt CO₂e, ~58% above the 2020 baseline it promised to cut from. Electricity +24%.', u:'https://www.theregister.com/on-prem/2026/07/10/ai-driven-datacenter-builds-drive-microsofts-emissions-up-a-quarter-in-one-year/5269924', l:'2026 Sustainability Report'},
+    {d:'Jul 2026', who:'Amazon', big:'+16% emissions', what:'80.85 Mt CO₂e, the biggest one-year jump since it began tracking, driven by data-centre build-out.', u:'https://www.geekwire.com/2026/the-cost-of-the-ai-boom-amazon-emissions-jump-16-as-company-stands-by-net-zero-pledge/', l:'2025 Sustainability Report'},
+    {d:'Apr 2026', who:'Meta', big:'~150% more', what:'Location-based electricity emissions, 2019 to 2024, per a shareholder filing to the SEC.', u:'https://www.sec.gov/Archives/edgar/data/0001326801/000121465926005915/o511264px14a6g.htm', l:'SEC shareholder filing'},
+    {d:'Jul 2026', who:'xAI', big:'59 turbines', what:'Gas turbines run without permits to power Colossus 2 near Memphis. Now in court with the NAACP.', u:'https://www.selc.org/news/xai-built-an-illegal-power-plant-to-power-its-data-center/', l:'SELC'},
+    {d:'Jul 2026', who:'Your bill', big:'11× price', what:'PJM grid capacity prices went from $28.92 to $329.17 per MW-day. Data centres drove 63% of one auction\'s increase, $9.3B paid by households.', u:'https://fortune.com/2026/07/24/why-youre-paying-for-data-center-electricity-power/', l:'Fortune'}
+  ];
+  $('receiptList').innerHTML = RECEIPTS.map(r =>
+    `<div class="rc"><span class="d">${r.d}</span><span class="who">${r.who}</span><div class="what"><strong>${r.big}</strong>${r.what}</div><a class="lnk" href="${r.u}" target="_blank" rel="noopener">${r.l} ↗</a></div>`
+  ).join('');
+  $('moneyChart').innerHTML = money.map(r =>
+    `<div class="bar-row"><div class="name">${r.n}<small>${r.s}</small></div>
+     <div class="track"><div class="bar${r.ai?'':' cmp'}" style="width:calc((100% - 80px) * ${r.v/mMax})" data-tip="${r.n}: $${fmt(r.v,r.v%1?1:0)} billion"></div><span class="bar-val">$${fmt(r.v,r.v%1?1:0)}B</span></div></div>`
+  ).join('');
+
+  /* ---------- energy stacked bars ---------- */
+  const energy = [
+    {n:'2025', s:'IEA estimate', ai:155, rest:330},
+    {n:'2030', s:'IEA base case', ai:465, rest:480}
+  ];
+  const eMax = 945;
+  $('energyChart').innerHTML = energy.map(r =>
+    `<div class="bar-row"><div class="name">${r.n}<small>${r.s}</small></div>
+     <div class="track"><div class="stack" style="width:calc((100% - 72px) * ${(r.ai+r.rest)/eMax});height:30px">
+       <div class="ai first" style="flex:${r.ai}" data-tip="${r.n}: AI-focused ${r.ai} TWh"></div>
+       <div class="rest last" style="flex:${r.rest}" data-tip="${r.n}: other data centres ${r.rest} TWh"></div>
+     </div><span class="bar-val">${r.ai+r.rest} TWh</span></div></div>`
+  ).join('');
+
+  /* ---------- range bars ---------- */
+  function range(el, lo, hi, axisMax, ticks, marker){
+    const p = v => (v/axisMax*100) + '%';
+    let h = `<div class="axis"></div><div class="span" style="left:${p(lo)};width:${(hi-lo)/axisMax*100}%" data-tip="Estimate ${lo}–${hi}"></div>`;
+    if(marker) h += `<div class="tick" style="left:${p(marker.v)}" data-tip="${marker.t}"></div>`;
+    ticks.forEach(t => { h += `<span class="tl" style="left:${p(t)}">${t}</span>`; });
+    el.innerHTML = h;
+  }
+  range($('co2Range'), 32.6, 79.7, 100, [0,25,50,75,100].map(String).map(Number), {v:52.2, t:'New York City, 2023: 52.2 Mt CO₂'});
+  range($('waterRange'), 312.5, 764.6, 1000, [0,250,500,750,1000], null);
+  // keep edge tick labels inside the box
+  document.querySelectorAll('.range').forEach(r => {
+    const ls = r.querySelectorAll('.tl');
+    if(ls.length){ ls[0].style.transform='none'; ls[ls.length-1].style.transform='translateX(-100%)'; }
+  });
+
+  /* ---------- subscription calculator ---------- */
+  const WH = {t:0.3, i:1.22, v:944};
+  const ML_PER_WH = 1.08, G_PER_WH = 0.45;
+  const PRESETS = { light:[5,0,0], typical:[20,2,0], power:[120,15,1], video:[40,10,10] };
+  const inT=$('inT'), inI=$('inI'), inV=$('inV');
+  function calc(){
+    const t=+inT.value, i=+inI.value, v=+inV.value;
+    $('oT').textContent=t; $('oI').textContent=i; $('oV').textContent=v;
+    const eT=t*WH.t*30, eI=i*WH.i*30, eV=v*WH.v*30, wh=eT+eI+eV;
+    const kwh = wh/1000, ml = wh*ML_PER_WH, g = wh*G_PER_WH;
+    $('bE').textContent = kwh<1 ? fmt(wh,0)+' Wh' : fmt(kwh,1)+' kWh';
+    $('qE').textContent = '≈ ' + fmt(wh/15, wh/15<10?1:0) + ' full phone charges';
+    $('bW').textContent = ml<1000 ? fmt(ml,0)+' mL' : fmt(ml/1000,1)+' L';
+    $('qW').textContent = '≈ ' + fmt(ml/250, ml/250<10?1:0) + ' glasses of water, before counting the power plant';
+    $('bC').textContent = g<1000 ? fmt(g,0)+' g' : fmt(g/1000,1)+' kg';
+    $('qC').textContent = '≈ ' + fmt(g/170, g/170<10?1:0) + ' km in an average petrol car';
+    const parts = [{c:'t',v:eT,n:'Text'},{c:'i',v:eI,n:'Images'},{c:'v',v:eV,n:'Video'}].filter(p=>p.v>0);
+    $('shareStack').innerHTML = parts.map((p,k)=>`<div class="${p.c}${k===parts.length-1?' last':''}" style="flex:${p.v}" data-tip="${p.n}: ${fmt(p.v/wh*100,1)}% of your energy"></div>`).join('') || '<div class="unk last" style="flex:1"></div>';
+    let verdict;
+    if(wh===0) verdict='Nothing used. The cleanest prompt is the one you don\'t send.';
+    else if(eV/wh>0.5) verdict='Video is ' + fmt(eV/wh*100,0) + '% of your footprint. That\'s the line.';
+    else if(kwh<1) verdict='About ' + fmt(Math.max(1,Math.round(kwh/0.1))) + ' kettle boils a month. Your typing isn\'t the problem. The scale is.';
+    else verdict='About ' + fmt(kwh/10,1) + ' days of an EU home\'s electricity, every month.';
+    $('bVerdict').textContent = verdict;
+  }
+  [inT,inI,inV].forEach(el => el.addEventListener('input', () => {
+    document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+    calc();
+  }));
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    const [t,i,v] = PRESETS[c.dataset.p];
+    inT.value=t; inI.value=i; inV.value=v;
+    document.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed', x===c));
+    calc();
+  });
+  calc();
+
+  /* ---------- the ladder ---------- */
+  const V = {
+    worth:{t:'Worth it', c:'var(--v-worth)'},
+    ok:{t:'Defensible', c:'var(--v-ok)'},
+    meh:{t:'Questionable', c:'var(--v-meh)'},
+    over:{t:'Over the line', c:'var(--v-over)'},
+    worst:{t:'Indefensible', c:'var(--v-worst)'}
+  };
+  const USES = [
+    {h:'Science & medicine', p:'Protein structures, drug discovery, disease screening. AlphaFold has predicted 200+ million protein structures.', v:'worth'},
+    {h:'Weather, grids & materials', p:'Faster forecasts, balancing renewable grids, finding new battery and solar materials.', v:'worth'},
+    {h:'Learning & tutoring', p:'About 10% of ChatGPT messages are tutoring or teaching.', v:'ok'},
+    {h:'Coding & real work', p:'Writing is 40% of work messages, mostly editing text people already wrote.', v:'ok'},
+    {h:'Questions a search engine already answers', p:'24% of ChatGPT messages are information seeking, the job a web search already does.', v:'meh'},
+    {h:'Ad targeting & endless feeds', p:'Meta now ranks ads with models at trillion-parameter scale. The product is your attention.', v:'over'},
+    {h:'AI companions & role-play', p:'Character.AI users average about 80 minutes a day talking to bots built to keep them there.', v:'over'},
+    {h:'Synthetic video & image slop', p:'One 5-second clip ≈ 944 Wh, enough to run a microwave for about an hour. Made to farm clicks.', v:'worst'}
+  ];
+  const N = USES.length;
+  const EDITORIAL = 4;
+  const SLOT_NAME = k => k===0 ? 'Nothing is worth it' : k===N ? 'Everything is worth it' : 'After “' + USES[k-1].h + '”';
+  let pos = EDITORIAL;
+  try { const s = localStorage.getItem('theline.pos'); if(s!==null && +s>=0 && +s<=N) pos = +s; } catch(e){}
+
+  const ladder = $('ladder');
+  const line = document.createElement('li');
+  line.className = 'dragline';
+  line.tabIndex = 0;
+  line.setAttribute('role','slider');
+  line.setAttribute('aria-label','Your line');
+  line.setAttribute('aria-valuemin','0');
+  line.setAttribute('aria-valuemax',String(N));
+  line.innerHTML = '<span class="tag">My line</span>';
+  const rungs = USES.map((u,k) => {
+    const li = document.createElement('li');
+    li.className = 'rung';
+    li.innerHTML = `<span class="n">${k+1}</span><div><h4></h4><p></p></div><span class="pill"><i style="background:${V[u.v].c}"></i>${V[u.v].t}</span>`;
+    li.querySelector('h4').textContent = u.h;
+    li.querySelector('p').textContent = u.p;
+    li.addEventListener('click', () => setPos(pos === k+1 ? k : k+1));
+    return li;
+  });
+  function renderLadder(){
+    ladder.textContent = '';
+    rungs.forEach((r,k) => {
+      if(k===pos) ladder.appendChild(line);
+      r.classList.toggle('below', k>=pos);
+      ladder.appendChild(r);
+    });
+    if(pos===N) ladder.appendChild(line);
+    line.setAttribute('aria-valuenow',String(pos));
+    line.setAttribute('aria-valuetext',SLOT_NAME(pos));
+    $('myLineText').textContent = pos===0 ? 'Nothing passes' : pos===N ? 'Everything passes' : pos + ' of ' + N + ' pass';
+    renderHist();
+  }
+  function setPos(p, keepFocus){
+    p = Math.max(0, Math.min(N, p));
+    if(p===pos) return;
+    pos = p;
+    try { localStorage.setItem('theline.pos', String(pos)); } catch(e){}
+    renderLadder();
+    if(keepFocus) line.focus();
+    if(saved !== null) $('saveStatus').textContent = saved===pos ? 'Saved.' : 'Not saved yet. Your saved line is ' + (saved) + ' of ' + N + '.';
+  }
+  line.addEventListener('keydown', e => {
+    if(e.key==='ArrowUp'||e.key==='ArrowLeft'){ e.preventDefault(); setPos(pos-1,true); }
+    if(e.key==='ArrowDown'||e.key==='ArrowRight'){ e.preventDefault(); setPos(pos+1,true); }
+    if(e.key==='Home'){ e.preventDefault(); setPos(0,true); }
+    if(e.key==='End'){ e.preventDefault(); setPos(N,true); }
+  });
+  let dragging = false;
+  line.addEventListener('pointerdown', e => { dragging = true; line.setPointerCapture(e.pointerId); e.preventDefault(); });
+  line.addEventListener('pointermove', e => {
+    if(!dragging) return;
+    let p = 0;
+    rungs.forEach((r,k) => { const b = r.getBoundingClientRect(); if(e.clientY > b.top + b.height/2) p = k+1; });
+    if(p!==pos){ setPos(p); line.setPointerCapture(e.pointerId); }
+  });
+  ['pointerup','pointercancel'].forEach(t => line.addEventListener(t, () => { dragging = false; }));
+
+  /* ---------- shared tally ---------- */
+  let votes = {};      // id -> pos
+  let myId = null, db = null, saved = null;
+  function renderHist(){
+    const vals = Object.values(votes).filter(v => typeof v==='number' && v>=0 && v<=N);
+    const counts = Array(N+1).fill(0);
+    vals.forEach(v => counts[v]++);
+    const max = Math.max(1, ...counts);
+    const rows = [];
+    for(let k=N;k>=0;k--){
+      const lbl = k===0 ? 'None pass' : k===N ? 'All pass' : 'Top ' + k + ' pass';
+      rows.push(`<div class="hist-row${k===pos?' me':''}"><span>${lbl}</span><div><div class="hb" style="width:${counts[k]/max*100}%" data-tip="${counts[k]} ${counts[k]===1?'person':'people'}: ${SLOT_NAME(k).replace(/"/g,'&quot;')}"></div></div><span class="c">${counts[k]}</span></div>`);
+    }
+    $('hist').innerHTML = rows.join('');
+    if(vals.length){
+      const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+      const r = Math.round(avg);
+      $('worldText').textContent = r===0 ? 'Nothing passes' : r===N ? 'Everything passes' : 'After “' + USES[r-1].h + '”';
+      $('worldNote').textContent = vals.length + (vals.length===1?' line':' lines') + ' drawn · average ' + fmt(avg,1) + ' of ' + N + ' uses pass';
+    } else {
+      $('worldText').textContent = 'No lines yet';
+      if(db) $('worldNote').textContent = 'Be the first. Drag the line and press “Draw my line here”.';
+    }
+  }
+  renderLadder();
+
+  $('saveBtn').onclick = async () => {
+    if(!db || !myId){
+      $('saveStatus').textContent = 'Saved on this device. Sign in to claude.ai with access to this page to add your line to the tally.';
+      return;
+    }
+    $('saveBtn').disabled = true;
+    $('saveStatus').textContent = 'Saving…';
+    try {
+      await db.collection('lines').doc(myId).set({pos, at: Date.now()});
+      saved = pos;
+      $('saveStatus').textContent = 'Saved. Your line counts in the tally.';
+    } catch(e){
+      $('saveStatus').textContent = e && e.code==='invalid_argument'
+        ? 'This view can read the tally but not add to it. Your line is saved on this device.'
+        : 'Couldn\'t save just now. Try again in a moment.';
+    }
+    $('saveBtn').disabled = false;
+  };
+
+  /* ---------- evidence wall ---------- */
+  const SECTIONS = {money:'Money', energy:'Energy', water:'Water & carbon', minerals:'Minerals & waste', sub:'Subscriptions', uses:'Uses of AI', general:'Whole picture'};
+  const MAX_POSTS = 10;
+  let wall = {};       // author id -> posts[]
+  let amOwner = false;
+  function cleanUrl(s){
+    try { const u = new URL(String(s).trim()); return (u.protocol==='https:'||u.protocol==='http:') ? u : null; } catch(e){ return null; }
+  }
+  function allPosts(){
+    const out = [];
+    Object.entries(wall).forEach(([author, posts]) => {
+      if(!Array.isArray(posts)) return;
+      posts.slice(0, MAX_POSTS).forEach(p => {
+        if(!p || typeof p!=='object') return;
+        const u = cleanUrl(p.url);
+        if(!u || (p.stance!=='support' && p.stance!=='challenge')) return;
+        out.push({author, id:String(p.id||''), url:u, title:String(p.title||'').slice(0,120), note:String(p.note||'').slice(0,200), stance:p.stance, section:SECTIONS[p.section]?p.section:'general', at:+p.at||0});
+      });
+    });
+    return out.sort((a,b) => b.at - a.at);
+  }
+  function renderWall(){
+    const posts = allPosts();
+    const s = posts.filter(p=>p.stance==='support'), c = posts.filter(p=>p.stance==='challenge');
+    $('sumS').textContent = $('wS').textContent = $('cS').textContent = s.length;
+    $('sumC').textContent = $('wC').textContent = $('cC2').textContent = c.length;
+    const st = $('wallStack');
+    st.textContent = '';
+    if(posts.length){
+      [['s',s.length,'support'],['c',c.length,'challenge']].filter(x=>x[1]).forEach((x,k,arr) => {
+        const d = document.createElement('div');
+        d.className = x[0] + (k===arr.length-1 ? ' last' : '');
+        d.style.flex = x[1];
+        d.dataset.tip = x[1] + ' ' + (x[1]===1?'link':'links') + ' ' + x[2] + ' the page (' + Math.round(x[1]/posts.length*100) + '%)';
+        st.appendChild(d);
+      });
+    } else {
+      const d = document.createElement('div'); d.className='unk last'; d.style.flex='1'; st.appendChild(d);
+    }
+    const bySec = {};
+    posts.forEach(p => bySec[p.section] = (bySec[p.section]||0) + 1);
+    const top = Object.entries(bySec).sort((a,b)=>b[1]-a[1])[0];
+    $('wSec').textContent = top ? 'Most discussed: ' + SECTIONS[top[0]] + ' (' + top[1] + ')' : '';
+    fillFeed($('feedS'), s, 'No supporting links yet. Post a report or article that backs up a number on this page.');
+    fillFeed($('feedC'), c, 'No challenges yet. Found a study that says we\'re wrong? Post it here.');
+  }
+  function fillFeed(ul, posts, emptyText){
+    ul.textContent = '';
+    if(!posts.length){
+      const li = document.createElement('li'); li.className='empty'; li.textContent = emptyText; ul.appendChild(li); return;
+    }
+    posts.forEach(p => {
+      const li = document.createElement('li');
+      const meta = document.createElement('div'); meta.className='meta';
+      const tag = document.createElement('span'); tag.className='tag'; tag.textContent = SECTIONS[p.section];
+      const host = document.createElement('span'); host.textContent = p.url.hostname.replace(/^www\./,'');
+      meta.append(tag, host);
+      if(p.at){ const dt = document.createElement('span'); dt.textContent = new Date(p.at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); meta.append(dt); }
+      if(p.author===myId || amOwner){
+        const rm = document.createElement('button'); rm.type='button'; rm.className='rm';
+        rm.textContent = p.author===myId ? 'Delete' : 'Remove';
+        rm.onclick = () => removePost(p.author, p.id);
+        meta.append(rm);
+      }
+      const a = document.createElement('a'); a.className='t'; a.href = p.url.href; a.target='_blank'; a.rel='nofollow ugc noopener noreferrer';
+      a.textContent = p.title || p.url.hostname.replace(/^www\./,'') + p.url.pathname;
+      li.append(meta, a);
+      if(p.note){ const n = document.createElement('p'); n.className='note'; n.textContent = p.note; li.append(n); }
+      ul.appendChild(li);
+    });
+  }
+  async function removePost(author, id){
+    if(!db) return;
+    const posts = (wall[author]||[]).filter(p => String(p.id)!==id);
+    try {
+      await db.collection('evidence').doc(author).set({posts});
+      $('pStatus').textContent = author===myId ? 'Deleted.' : 'Removed.';
+    } catch(e){ $('pStatus').textContent = 'Couldn\'t remove that link. Try again in a moment.'; }
+  }
+  $('postForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const st = $('pStatus');
+    const u = cleanUrl($('pUrl').value);
+    if(!u){ st.textContent = 'Paste a full web address starting with https://'; $('pUrl').focus(); return; }
+    if(!db || !myId){ st.textContent = 'Posting needs you signed in to claude.ai with access to this page.'; return; }
+    const mine = Array.isArray(wall[myId]) ? wall[myId].slice() : [];
+    if(mine.length >= MAX_POSTS){ st.textContent = 'You\'ve posted ' + MAX_POSTS + ' links. Delete one to post another.'; return; }
+    mine.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      url: u.href,
+      title: $('pTitle').value.trim().slice(0,120),
+      note: $('pNote').value.trim().slice(0,200),
+      stance: document.querySelector('input[name=pStance]:checked').value,
+      section: $('pSec').value,
+      at: Date.now()
+    });
+    $('pBtn').disabled = true; st.textContent = 'Posting…';
+    try {
+      await db.collection('evidence').doc(myId).set({posts: mine});
+      st.textContent = 'Posted. Thanks for adding to the record.';
+      $('pUrl').value = ''; $('pTitle').value = ''; $('pNote').value = '';
+    } catch(err){
+      st.textContent = err && err.code==='invalid_argument'
+        ? 'This view can read the wall but not post to it.'
+        : err && err.code==='quota_exceeded' ? 'The wall is full right now. The owner needs to clear old links.' : 'Couldn\'t post just now. Try again in a moment.';
+    }
+    $('pBtn').disabled = false;
+  });
+  renderWall();
+
+  (async () => {
+    const noWall = msg => { $('pStatus').textContent = msg; };
+    if(!window.claude || !window.claude.use){
+      $('worldNote').textContent = 'The shared tally isn\'t available here. Your line is saved on this device.';
+      noWall('The wall isn\'t available in this view.');
+      return;
+    }
+    const [d, u] = await Promise.all([claude.use('db'), claude.use('user')]);
+    if(!d){
+      $('worldNote').textContent = 'Sign in to claude.ai to see and join the shared tally. Your line is saved on this device.';
+      noWall('Sign in to claude.ai to read and post links.');
+      return;
+    }
+    db = d;
+    myId = u ? await u.id() : null;
+    amOwner = u ? await u.isOwner() : false;
+    db.collection('evidence').onSnapshot(snap => {
+      const next = {};
+      snap.docs.forEach(doc => { const x = doc.data(); if(x && Array.isArray(x.posts)) next[doc.id] = x.posts; });
+      wall = next;
+      renderWall();
+    }, () => { noWall('The wall stopped updating. Reload to reconnect.'); });
+    db.collection('lines').onSnapshot(snap => {
+      const next = {};
+      snap.docs.forEach(doc => { const x = doc.data(); if(x && typeof x.pos==='number') next[doc.id] = x.pos; });
+      votes = next;
+      if(myId && myId in votes && saved===null){ saved = votes[myId]; }
+      renderHist();
+    }, () => {
+      $('worldNote').textContent = 'The shared tally stopped updating. Reload to reconnect.';
+    });
+  })();
+})();
+</script>
+
+</body></html>
